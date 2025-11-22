@@ -50,50 +50,66 @@ export function OnboardingScreen({ onComplete }: OnboardingScreenProps) {
     },
   ]
 
+  // Log component mount and auth state changes
+  React.useEffect(() => {
+    console.log('[Onboarding] Component mounted/updated. Auth state:', { isAuthenticated, isMiniKitInstalled: MiniKit.isInstalled() })
+  }, [isAuthenticated])
+
   const handleGetStarted = async () => {
+    console.log('[Onboarding] handleGetStarted triggered')
+    
     // 1. Authenticate if needed
     if (!isAuthenticated) {
+      console.log('[Onboarding] User not authenticated, triggering login...')
       const success = await authenticate()
+      console.log('[Onboarding] Authentication result:', success)
+      
       if (!success) {
-        console.log("Authentication failed or cancelled")
+        console.log("[Onboarding] Authentication failed or cancelled")
         return
       }
       // Wait for the auth drawer to close before requesting permissions
+      console.log('[Onboarding] Auth successful, waiting for drawer to close...')
       await new Promise(resolve => setTimeout(resolve, 1000))
+    } else {
+      console.log('[Onboarding] User already authenticated, proceeding to notifications...')
     }
 
     // 2. Request notification permissions
     if (MiniKit.isInstalled()) {
+      console.log('[Onboarding] MiniKit installed, requesting notification permissions...')
       try {
         const { finalPayload } = await MiniKit.commandsAsync.requestPermission({
           permission: Permission.Notifications,
         })
         
+        console.log('[Onboarding] Permission request payload:', finalPayload)
+
         if (finalPayload.status === 'success') {
-          console.log("Notification permission granted")
+          console.log("[Onboarding] Notification permission granted")
           setNotificationsEnabled(true)
           setShowSuccess(true)
         } else {
           // Check for specific error codes
           if (finalPayload.status === 'error' && finalPayload.error_code === 'already_granted') {
-            console.log("Notification permission already granted")
+            console.log("[Onboarding] Notification permission already granted")
             setNotificationsEnabled(true)
             setShowSuccess(true)
           } else {
-            console.log("Notification permission denied/failed:", finalPayload)
+            console.log("[Onboarding] Notification permission denied/failed:", finalPayload)
             setNotificationsEnabled(false)
             // Show feedback to user
             alert("Please enable notifications to continue.")
           }
         }
       } catch (error) {
-        console.log("Notification permission request error:", error)
+        console.log("[Onboarding] Notification permission request error:", error)
         setNotificationsEnabled(false)
         alert("Something went wrong requesting permissions. Please try again.")
       }
     } else {
       // Fallback for browser/dev environment where MiniKit isn't installed
-      console.log("MiniKit not installed, skipping notifications")
+      console.log("[Onboarding] MiniKit not installed, skipping notifications (Dev Mode)")
       setShowSuccess(true)
     }
   }
