@@ -17,18 +17,22 @@ export async function POST(req: NextRequest) {
   console.log('[API] Request data:', {
     address: payload.address,
     username,
-    hasProfilePicture: !!profilePictureUrl
+    hasProfilePicture: !!profilePictureUrl,
+    receivedNonce: nonce
   });
 
   // Verify the nonce matches the one we created
   const cookieStore = await cookies();
   const storedNonce = cookieStore.get('siwe')?.value;
 
+  console.log('[API] Nonce comparison:', {
+    storedNonce: storedNonce,
+    receivedNonce: nonce,
+    match: storedNonce === nonce
+  });
+
   if (!storedNonce || storedNonce !== nonce) {
-    console.error('[API] Invalid nonce:', {
-      storedNonce: !!storedNonce,
-      match: storedNonce === nonce
-    });
+    console.error('[API] Nonce mismatch! Got:', nonce, 'Expected:', storedNonce);
     return NextResponse.json(
       {
         status: 'error',

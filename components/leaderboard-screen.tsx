@@ -30,6 +30,14 @@ export function LeaderboardScreen({
   const topThree = entries.slice(0, 3);
   const rest = entries.slice(3);
 
+  // Debug logging for sticky card
+  console.log('[LeaderboardScreen] Sticky card check:', {
+    currentUserRank,
+    isGreaterThan3: currentUserRank ? currentUserRank > 3 : false,
+    currentUser,
+    shouldShow: currentUserRank && currentUserRank > 3
+  });
+
   return (
     <div className="flex-1 overflow-y-auto px-6 pb-24">
       <div className="flex gap-2 mb-6 sticky top-5 z-10 bg-background/95 backdrop-blur pt-5 pb-2 -mt-4">
@@ -146,7 +154,7 @@ export function LeaderboardScreen({
       )}
 
       {/* Current user rank (sticky) */}
-      {currentUserRank && currentUserRank > 3 && currentUser && (
+      {currentUserRank && currentUserRank > 3 && (
         <motion.div
           initial={{ y: 100 }}
           animate={{ y: 0 }}
@@ -155,11 +163,11 @@ export function LeaderboardScreen({
           <LeaderboardRowCard
             entry={{
               rank: currentUserRank,
-              username: currentUser.username || 'You',
-              avatarUrl: currentUser.avatarUrl || '/placeholder.svg?height=40&width=40',
-              wld: currentUser.wld || 0,
-              wins: currentUser.wins || 0,
-              imageUrl: currentUser.imageUrl || '/placeholder.svg?height=400&width=400'
+              username: currentUser?.username || 'You',
+              avatarUrl: currentUser?.avatarUrl || '/placeholder.svg?height=40&width=40',
+              wld: currentUser?.wld || 0,
+              wins: currentUser?.wins || 0,
+              imageUrl: currentUser?.imageUrl || '/placeholder.svg?height=400&width=400'
             }}
             isSticky
           />

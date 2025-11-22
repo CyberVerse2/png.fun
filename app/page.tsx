@@ -12,6 +12,7 @@ import { HumanVerificationModal } from '@/components/human-verification-modal';
 import { AlreadySubmittedModal } from '@/components/already-submitted-modal';
 import { PhotoPreviewScreen } from '@/components/photo-preview-screen';
 import { SuccessScreen } from '@/components/success-screen';
+import { NotificationPrompt } from '@/components/notification-prompt';
 import { useEffect } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useUser } from '@/components/minikit-provider';
@@ -140,79 +141,7 @@ const mockLeaderboard = [
   }
 ];
 
-const mockProfile = {
-  username: 'You',
-  avatarUrl: '/placeholder.svg?height=96&width=96',
-  wld: 5420,
-  wins: 8,
-  streak: 12,
-  totalWldEarned: 145,
-  submissions: [
-    {
-      id: '1',
-      imageUrl: '/user-photo-1.jpg',
-      challenge: 'Golden Hour',
-      votes: 234,
-      rank: 3
-    },
-    {
-      id: '2',
-      imageUrl: '/user-photo-2.jpg',
-      challenge: 'Street Life',
-      votes: 189,
-      rank: 7
-    },
-    {
-      id: '3',
-      imageUrl: '/user-photo-3.jpg',
-      challenge: "Nature's Beauty",
-      votes: 312,
-      rank: 1
-    },
-    {
-      id: '4',
-      imageUrl: '/user-photo-4.jpg',
-      challenge: 'Urban Jungle',
-      votes: 156,
-      rank: 12
-    }
-  ],
-  predictions: [
-    {
-      id: '1',
-      challenge: "Today's Challenge",
-      status: 'active' as const,
-      amount: 50,
-      imageUrl: '/placeholder.svg?height=200&width=200',
-      photographer: {
-        username: 'LensQueen',
-        avatarUrl: '/placeholder.svg?height=40&width=40'
-      }
-    },
-    {
-      id: '2',
-      challenge: "Yesterday's Winner",
-      status: 'won' as const,
-      amount: 120,
-      imageUrl: '/placeholder.svg?height=200&width=200',
-      photographer: {
-        username: 'ShutterBug',
-        avatarUrl: '/placeholder.svg?height=40&width=40'
-      }
-    },
-    {
-      id: '3',
-      challenge: 'Two Days Ago',
-      status: 'lost' as const,
-      amount: 30,
-      imageUrl: '/placeholder.svg?height=200&width=200',
-      photographer: {
-        username: 'PixelPerfect',
-        avatarUrl: '/placeholder.svg?height=40&width=40'
-      }
-    }
-  ]
-};
+// Mock profile data removed - now using real data from database
 
 // Helper function to calculate time remaining
 function calculateTimeRemaining(endTime: string): string {
@@ -229,8 +158,9 @@ function calculateTimeRemaining(endTime: string): string {
 }
 
 export default function Home() {
-  const [showOnboarding, setShowOnboarding] = React.useState(false); // Start as false, check localStorage
+  const [showOnboarding, setShowOnboarding] = React.useState(false); // Start as false, check DB for onboarding status
   const [showOnboardingSuccess, setShowOnboardingSuccess] = React.useState(false);
+  const [showNotificationPrompt, setShowNotificationPrompt] = React.useState(false);
   const [activeTab, setActiveTab] = React.useState<'vote' | 'leaderboard'>('vote');
   const [showProfile, setShowProfile] = React.useState(false);
   const [isExpanded, setIsExpanded] = React.useState(false);
@@ -254,6 +184,7 @@ export default function Home() {
     wld: 0,
     wins: 0
   });
+  const [profileData, setProfileData] = React.useState<any>(null);
 
   const [checkingOnboarding, setCheckingOnboarding] = React.useState(true);
 
@@ -295,6 +226,37 @@ export default function Home() {
           if (data.onboarding_completed) {
             console.log('[Frontend] User has completed onboarding (DB)');
             setShowOnboarding(false);
+
+            // Check if notifications need to be enabled
+            if (!data.notifications_enabled && MiniKit.isInstalled()) {
+              console.log('[Frontend] Onboarding complete but notifications not enabled');
+              // Check current MiniKit permission status
+              try {
+                const { finalPayload } = await MiniKit.commandsAsync.getPermissions();
+                if (finalPayload.status === 'success') {
+                  const hasNotifications = finalPayload.permissions.notifications;
+                  if (!hasNotifications) {
+                    console.log('[Frontend] Showing notification prompt');
+                    setShowNotificationPrompt(true);
+                  } else {
+                    console.log(
+                      '[Frontend] Notifications already granted in MiniKit, syncing to DB'
+                    );
+                    // Sync to DB
+                    await fetch('/api/user/status', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({
+                        walletAddress: user.walletAddress,
+                        notificationsEnabled: true
+                      })
+                    });
+                  }
+                }
+              } catch (e) {
+                console.error('[Frontend] Error checking notification permissions:', e);
+              }
+            }
           } else {
             console.log('[Frontend] User has NOT completed onboarding (DB)');
             setShowOnboarding(true);
@@ -481,13 +443,23 @@ export default function Home() {
           walletAddress: user.wallet_address
         }));
 
-        // Calculate current user's rank
+        // Calculate current user's rank and update stats
         if (user.walletAddress) {
           const userIndex = data.leaderboard.findIndex(
             (u: any) => u.wallet_address === user.walletAddress
           );
           if (userIndex !== -1) {
-            setUserStats((prev) => ({ ...prev, rank: userIndex + 1 }));
+            const userData = data.leaderboard[userIndex];
+            setUserStats({
+              wld: userData.total_wld_earned || 0,
+              wins: userData.total_wins || 0,
+              rank: userIndex + 1
+            });
+            console.log('[Frontend] Updated user stats from leaderboard:', {
+              wld: userData.total_wld_earned,
+              wins: userData.total_wins,
+              rank: userIndex + 1
+            });
           }
         }
 
@@ -509,11 +481,82 @@ export default function Home() {
     }
   };
 
+  // Fetch profile data
+  const fetchProfileData = async () => {
+    if (!userId || !supabase) return;
+
+    console.log('[Frontend] Fetching profile data for user:', userId);
+    try {
+      // Fetch user stats
+      const { data: userData, error: userError } = await supabase
+        .from('users')
+        .select('username, profile_picture_url, total_wld_earned, total_wins, current_streak')
+        .eq('id', userId)
+        .single();
+
+      if (userError) {
+        console.error('[Frontend] Error fetching user data:', userError);
+        return;
+      }
+
+      // Fetch user submissions
+      const { data: submissionsData, error: submissionsError } = await supabase
+        .from('submissions')
+        .select(
+          `
+          id,
+          photo_url,
+          total_wld_voted,
+          created_at,
+          challenge:challenges(title)
+        `
+        )
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false });
+
+      if (submissionsError) {
+        console.error('[Frontend] Error fetching submissions:', submissionsError);
+      }
+
+      // Fetch user votes (predictions) - for now, we'll use empty array as votes table might not have the structure yet
+      const predictions: any[] = [];
+
+      const profile = {
+        username: userData.username || user.username || 'You',
+        avatarUrl: userData.profile_picture_url || user.profilePictureUrl || '/placeholder.svg',
+        wld: userData.total_wld_earned || 0,
+        wins: userData.total_wins || 0,
+        streak: userData.current_streak || 0,
+        totalWldEarned: userData.total_wld_earned || 0,
+        submissions: (submissionsData || []).map((sub: any, index: number) => ({
+          id: sub.id,
+          imageUrl: sub.photo_url,
+          challenge: sub.challenge?.title || 'Challenge',
+          votes: sub.total_wld_voted || 0,
+          rank: index + 1 // Simplified ranking
+        })),
+        predictions: predictions
+      };
+
+      console.log('[Frontend] Profile data fetched:', profile);
+      setProfileData(profile);
+    } catch (error) {
+      console.error('[Frontend] Error fetching profile data:', error);
+    }
+  };
+
   // Load data on mount
   useEffect(() => {
     fetchChallenge();
     fetchLeaderboard();
   }, []);
+
+  // Fetch profile data when userId changes
+  useEffect(() => {
+    if (userId) {
+      fetchProfileData();
+    }
+  }, [userId]);
 
   // Show loading screen while checking user/onboarding
   if (user.isLoading || checkingOnboarding) {
@@ -618,10 +661,18 @@ export default function Home() {
         // Update local state immediately to reflect submission
         setHasSubmittedToday(true);
         setUserSubmission(data.submission);
+
+        console.log('[Frontend] Refreshing data after submission...');
         // Refresh submissions to show the new one
         await fetchSubmissions(challenge.id);
-        // Refresh leaderboard to update rankings
+        // Refresh leaderboard to update rankings and user stats
         await fetchLeaderboard();
+        // Also refresh profile data if on profile tab
+        if (userId) {
+          await fetchProfileData();
+        }
+
+        console.log('[Frontend] All data refreshed, showing success screen');
         // Show success screen only after successful submission
         setShowSuccess(true);
       } else {
@@ -684,6 +735,28 @@ export default function Home() {
     setShowOnboardingSuccess(false);
   };
 
+  const handleNotificationPromptComplete = async (enabled: boolean) => {
+    console.log('[Frontend] Notification prompt completed, enabled:', enabled);
+    setShowNotificationPrompt(false);
+
+    // Update DB with notification status
+    if (user.walletAddress) {
+      try {
+        await fetch('/api/user/status', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            walletAddress: user.walletAddress,
+            notificationsEnabled: enabled
+          })
+        });
+        console.log('[Frontend] Notification status saved to DB');
+      } catch (error) {
+        console.error('[Frontend] Error saving notification status:', error);
+      }
+    }
+  };
+
   const handleTabChange = (tab: 'vote' | 'leaderboard') => {
     setActiveTab(tab);
     setShowProfile(false);
@@ -711,7 +784,18 @@ export default function Home() {
               transition={{ duration: 0.2 }}
               className="flex-1 flex flex-col h-full"
             >
-              <ProfileScreen data={mockProfile} />
+              {profileData ? (
+                <ProfileScreen data={profileData} />
+              ) : (
+                <div className="flex-1 flex items-center justify-center">
+                  <div className="flex flex-col items-center gap-4">
+                    <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+                    <div className="text-xl font-black uppercase tracking-widest animate-pulse">
+                      Loading Profile...
+                    </div>
+                  </div>
+                </div>
+              )}
             </motion.div>
           ) : activeTab === 'vote' ? (
             <motion.div
@@ -802,6 +886,12 @@ export default function Home() {
       )}
 
       {showSuccess && <SuccessScreen onContinue={handleSuccessContinue} />}
+
+      <NotificationPrompt
+        isOpen={showNotificationPrompt}
+        onOpenChange={setShowNotificationPrompt}
+        onComplete={handleNotificationPromptComplete}
+      />
     </>
   );
 }

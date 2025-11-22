@@ -35,7 +35,31 @@ The user reported that username and pfp were not being saved in the flow.
 
 ## Executor's Feedback or Assistance Requests
 
-(None yet)
+### Latest Update (Notification Flow Separation)
+
+**Implemented**: Separate handling for onboarding vs notification permissions based on DB flags
+
+**Changes Made**:
+
+1. ✅ Created `NotificationPrompt` component - simple drawer for returning users
+2. ✅ Enhanced `fetchUserData()` logic to check both `onboarding_completed` AND `notifications_enabled` flags
+3. ✅ Decision tree:
+   - If `onboarding_completed = false` → Show full onboarding (includes sign-in + notifications)
+   - If `onboarding_completed = true` BUT `notifications_enabled = false` → Show notification prompt only
+   - If both flags are `true` → Go straight to main app
+4. ✅ Auto-sync: If MiniKit already has permission but DB says false, auto-update DB
+
+**Files**:
+
+- Created: `components/notification-prompt.tsx`
+- Modified: `app/page.tsx`
+- Docs: `.cursor/notification_prompt_implementation.md`
+
+**Ready for Testing**:
+
+- Test new user flow (onboarding includes notifications)
+- Test returning user without notifications (should see simple prompt)
+- Test returning user with notifications (no prompts)
 
 ## Lessons
 

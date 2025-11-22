@@ -56,21 +56,9 @@ export function OnboardingScreen({ onComplete }: OnboardingScreenProps) {
       isAuthenticated,
       isMiniKitInstalled: MiniKit.isInstalled()
     });
-
-    // Auto-trigger authentication when onboarding first loads if not authenticated
-    const autoAuthenticate = async () => {
-      if (!isAuthenticated && MiniKit.isInstalled()) {
-        console.log('[Onboarding] Not authenticated, triggering auto-login on mount...');
-        const success = await authenticate();
-        if (!success) {
-          console.log('[Onboarding] Auto-authentication failed or cancelled');
-        }
-      }
-    };
-
-    autoAuthenticate();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isAuthenticated]); // Only depend on isAuthenticated, authenticate is now memoized
+    // Note: Removed auto-authentication to prevent double nonce generation
+    // User should explicitly trigger authentication by clicking button
+  }, [isAuthenticated]);
 
   const handleGetStarted = async () => {
     console.log('[Onboarding] handleGetStarted triggered');
@@ -92,11 +80,14 @@ export function OnboardingScreen({ onComplete }: OnboardingScreenProps) {
     // 2. Request notification permissions
     if (MiniKit.isInstalled()) {
       console.log('[Onboarding] MiniKit installed, requesting notification permissions...');
+      console.log('[Onboarding] About to call MiniKit.commandsAsync.requestPermission...');
       try {
-        const { finalPayload } = await MiniKit.commandsAsync.requestPermission({
+        const result = await MiniKit.commandsAsync.requestPermission({
           permission: Permission.Notifications
         });
 
+        console.log('[Onboarding] requestPermission returned:', result);
+        const { finalPayload } = result;
         console.log('[Onboarding] Permission request payload:', finalPayload);
 
         if (finalPayload.status === 'success') {
