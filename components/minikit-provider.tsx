@@ -8,6 +8,7 @@ interface UserData {
   username?: string
   profilePictureUrl?: string
   isAuthenticated: boolean
+  isLoading: boolean
 }
 
 interface UserContextType {
@@ -16,7 +17,7 @@ interface UserContextType {
 }
 
 const UserContext = createContext<UserContextType>({
-  user: { isAuthenticated: false },
+  user: { isAuthenticated: false, isLoading: true },
   authenticate: async () => false,
 })
 
@@ -24,7 +25,7 @@ export const useUser = () => useContext(UserContext).user
 export const useAuth = () => useContext(UserContext).authenticate
 
 export default function MiniKitProvider({ children }: { children: ReactNode }) {
-  const [userData, setUserData] = useState<UserData>({ isAuthenticated: false })
+  const [userData, setUserData] = useState<UserData>({ isAuthenticated: false, isLoading: true })
 
   useEffect(() => {
     MiniKit.install("app_a9e1e8a3c65d60bcf0432ec93883b524")
@@ -35,7 +36,12 @@ export default function MiniKitProvider({ children }: { children: ReactNode }) {
       await new Promise(resolve => setTimeout(resolve, 500))
       
       if (MiniKit.isInstalled()) {
-        await authenticate()
+        const success = await authenticate()
+        if (!success) {
+           setUserData(prev => ({ ...prev, isLoading: false }))
+        }
+      } else {
+         setUserData(prev => ({ ...prev, isLoading: false }))
       }
     }
 
@@ -82,6 +88,7 @@ export default function MiniKitProvider({ children }: { children: ReactNode }) {
             username: MiniKit.user?.username,
             profilePictureUrl: MiniKit.user?.profilePictureUrl,
             isAuthenticated: true,
+            isLoading: false
           })
           return true
         }

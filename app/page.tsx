@@ -220,12 +220,17 @@ export default function Home() {
   const [hasSubmittedToday, setHasSubmittedToday] = React.useState(false)
   const [showAlreadySubmittedModal, setShowAlreadySubmittedModal] = React.useState(false)
 
+  const [checkingOnboarding, setCheckingOnboarding] = React.useState(true)
+
   // Get authenticated user
   const user = useUser()
 
   // Fetch user ID and verification status from database when wallet address is available
   useEffect(() => {
     const fetchUserData = async () => {
+      // Wait for user auth to load
+      if (user.isLoading) return
+
       if (user.isAuthenticated && user.walletAddress && supabase) {
         console.log('[Frontend] Fetching user data for wallet:', user.walletAddress)
         const { data, error } = await supabase
@@ -276,13 +281,19 @@ export default function Home() {
             }
           }
         }
-      } else if (!supabase) {
-        console.warn('[Frontend] Supabase client not initialized - check environment variables')
+      } else if (!user.isAuthenticated) {
+        // Not authenticated, show onboarding by default or just app?
+        // Let's show app, assuming they need to connect first
+        setShowOnboarding(false) 
       }
+
+      setCheckingOnboarding(false)
     }
 
     fetchUserData()
-  }, [user.isAuthenticated, user.walletAddress])
+  }, [user.isAuthenticated, user.walletAddress, user.isLoading])
+
+
 
   // Check if user has already submitted for current challenge
   useEffect(() => {
@@ -386,6 +397,18 @@ export default function Home() {
     fetchChallenge()
     fetchLeaderboard()
   }, [])
+
+  // Show loading screen while checking user/onboarding
+  if (user.isLoading || checkingOnboarding) {
+    return (
+      <div className="fixed inset-0 bg-background flex items-center justify-center z-[100]">
+        <div className="flex flex-col items-center gap-4">
+          <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+          <div className="text-xl font-black uppercase tracking-widest animate-pulse">Loading...</div>
+        </div>
+      </div>
+    )
+  }
 
   const handleVote = async (photoId: string, vote: "up" | "down") => {
     if (!userId) {
