@@ -2,8 +2,6 @@
 
 import * as React from "react"
 import { PhotoCard } from "./photo-card"
-import { NeoButton } from "./neo-button"
-import { ThumbsUp, ThumbsDown } from "lucide-react"
 import { motion, useMotionValue, useTransform, useAnimation } from "framer-motion"
 
 interface Photo {
@@ -87,10 +85,10 @@ export function VoteStack({ photos, onVote }: VoteStackProps) {
   const visiblePhotos = photos.slice(currentIndex, currentIndex + 3).reverse()
 
   return (
-    <div className="flex-1 flex flex-col px-6 overflow-hidden">
+    <div className="flex-1 flex flex-col px-6 relative">
       {/* Card Stack */}
       <div className="relative flex-1 flex items-center justify-center mb-6">
-        <div className="relative w-full max-w-sm aspect-[3/4]">
+        <div className="relative z-50 w-full max-w-sm aspect-1/1">
           {visiblePhotos.map((photo, index) => {
             // visiblePhotos is reversed, so the last item is the top card (current index)
             const isTop = index === visiblePhotos.length - 1
@@ -158,35 +156,19 @@ export function VoteStack({ photos, onVote }: VoteStackProps) {
         </div>
       </div>
 
-      {/* Vote Buttons */}
-      <div className="flex items-center justify-center gap-6 mb-6">
-        <NeoButton
-          size="icon"
-          variant="primary"
-          onClick={() => handleVote("down")}
-          className="bg-red-500 hover:bg-red-600 border-black"
-          drag="x"
-          dragConstraints={{ left: -500, right: 500 }}
-          dragElastic={0.5}
-          whileHover={{ scale: 1.1 }}
-          whileTap={{ scale: 0.95 }}
+      {/* Swipe Instructions */}
+      <div className="flex items-center justify-center mb-6 px-4">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.5 }}
+          className="text-center"
         >
-          <ThumbsDown className="h-8 w-8 text-white" strokeWidth={3} />
-        </NeoButton>
-
-        <NeoButton
-          size="icon"
-          variant="primary"
-          onClick={() => handleVote("up")}
-          className="bg-green-500 hover:bg-green-600 border-black"
-          drag="x"
-          dragConstraints={{ left: -500, right: 500 }}
-          dragElastic={0.5}
-          whileHover={{ scale: 1.1 }}
-          whileTap={{ scale: 0.95 }}
-        >
-          <ThumbsUp className="h-8 w-8 text-white" strokeWidth={3} />
-        </NeoButton>
+          <p className="text-sm font-black uppercase text-muted-foreground">
+            Swipe <span className="text-green-500">right</span> to vote ·{" "}
+            <span className="text-red-500">left</span> to skip
+          </p>
+        </motion.div>
       </div>
     </div>
   )

@@ -231,7 +231,7 @@ function LeaderboardRowCard({ entry, isSticky = false }: { entry: LeaderboardEnt
         {/* Content Info */}
         <div className="flex-1 min-w-0 ml-1">
           <div className="flex items-center justify-between mb-0.5">
-            <div className={`font-black truncate text-sm ${isSticky ? "text-white" : ""}`}>{entry.username}</div>
+            <div className={`font-black truncate text-sm ${isSticky ? "text-black" : ""}`}>{entry.username}</div>
             {isSticky && (
               <span className="text-[10px] font-black bg-white/20 px-2 py-0.5 rounded-full whitespace-nowrap ml-2">
                 Top 15%
@@ -243,7 +243,7 @@ function LeaderboardRowCard({ entry, isSticky = false }: { entry: LeaderboardEnt
             className={`flex items-center gap-2 text-xs font-bold ${isSticky ? "opacity-90" : "text-muted-foreground"}`}
           >
             <span
-              className={`flex items-center gap-1 px-1.5 py-0.5 rounded ${isSticky ? "bg-black/20" : "bg-muted text-foreground"}`}
+              className={`flex items-center gap-1 px-1.5 py-0.5 rounded ${isSticky ? "bg-black/20 text-black" : "bg-muted text-foreground"}`}
             >
               <Zap className={`h-3 w-3 ${isSticky ? "text-yellow-300" : "text-primary"}`} fill="currentColor" />
               {entry.wld} WLD
