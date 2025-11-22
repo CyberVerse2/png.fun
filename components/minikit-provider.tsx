@@ -28,12 +28,7 @@ export default function MiniKitProvider({ children }: { children: ReactNode }) {
   const [userData, setUserData] = useState<UserData>({ isAuthenticated: false, isLoading: true });
 
   useEffect(() => {
-    console.log('🚀 [MINIKIT] Provider mounted, installing MiniKit...');
     MiniKit.install('app_a9e1e8a3c65d60bcf0432ec93883b524');
-
-    // MiniKit doesn't persist username/wallet between sessions in World App
-    // Just mark as loaded, authentication will happen via DB check in page.tsx
-    console.log('⏳ [MINIKIT] MiniKit installed, waiting for authentication...');
     setUserData((prev) => ({ ...prev, isLoading: false }));
   }, []);
 

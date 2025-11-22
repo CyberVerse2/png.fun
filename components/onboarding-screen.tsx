@@ -91,30 +91,19 @@ export function OnboardingScreen({ onComplete }: OnboardingScreenProps) {
         console.log('[Onboarding] Permission request payload:', finalPayload);
 
         if (finalPayload.status === 'success') {
-          console.log('✅ [NOTIFICATION ENABLED #1] Onboarding - Permission granted by user');
           setNotificationsEnabled(true);
           setShowSuccess(true);
         } else {
-          // Check for specific error codes
           if (finalPayload.status === 'error' && finalPayload.error_code === 'already_granted') {
-            console.log('✅ [NOTIFICATION ENABLED #2] Onboarding - Permission already granted');
             setNotificationsEnabled(true);
             setShowSuccess(true);
           } else {
-            console.log(
-              '❌ [NOTIFICATION DISABLED] Onboarding - Permission denied/failed:',
-              finalPayload
-            );
             setNotificationsEnabled(false);
-            // Allow user to proceed without notifications
             setShowSuccess(true);
           }
         }
       } catch (error) {
-        console.log('[Onboarding] Notification permission request error:', error);
         setNotificationsEnabled(false);
-        // Allow user to proceed without notifications even on error
-        console.log('[Onboarding] Proceeding without notifications due to error');
         setShowSuccess(true);
       }
     } else {

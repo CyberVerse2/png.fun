@@ -191,22 +191,66 @@ export default function Home() {
   // Get authenticated user
   const user = useUser();
 
-  // Simple onboarding check - show if not authenticated
+  // Check for existing user on mount (World App doesn't persist MiniKit.user)
   useEffect(() => {
-    if (user.isLoading) return;
+    const checkForExistingUser = async () => {
+      if (user.isLoading) return;
 
-    // If not authenticated, show onboarding (which will trigger sign-in)
-    if (!user.isAuthenticated) {
+      // If already authenticated, skip onboarding check
+      if (user.isAuthenticated) {
+        setCheckingOnboarding(false);
+        return;
+      }
+
+      console.log('🔍 [ONBOARDING] Checking if current user has completed onboarding...');
+
+      // Check if the current user (from session cookie) has completed onboarding
+      try {
+        const response = await fetch('/api/check-worldapp-user');
+
+        if (response.ok) {
+          const { hasUser, user: existingUser } = await response.json();
+          if (hasUser && existingUser?.onboarding_completed) {
+            console.log('✅ [ONBOARDING] User has completed onboarding - skipping');
+            setShowOnboarding(false);
+            setCheckingOnboarding(false);
+            return;
+          }
+        }
+      } catch (e) {
+        console.log('❌ [ONBOARDING] Error checking for existing user');
+      }
+
+      // No user with completed onboarding found - show onboarding
+      console.log('⚠️ [ONBOARDING] No completed onboarding found - showing onboarding screen');
       setShowOnboarding(true);
-    }
+      setCheckingOnboarding(false);
+    };
 
-    setCheckingOnboarding(false);
+    // Small delay to let app initialize
+    const timer = setTimeout(checkForExistingUser, 500);
+    return () => clearTimeout(timer);
   }, [user.isLoading, user.isAuthenticated]);
 
   // Fetch user ID and verification status from database when wallet address is available
   useEffect(() => {
     const fetchUserData = async () => {
-      if (user.isLoading) return;
+      // Send debug info to API so we can see it in terminal
+      await fetch('/api/debug-session', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          walletAddress: user.walletAddress,
+          username: user.username,
+          isAuthenticated: user.isAuthenticated,
+          miniKitUser: typeof window !== 'undefined' && (window as any).MiniKit?.user
+        })
+      }).catch(() => {});
+
+      // Wait for user auth to load
+      if (user.isLoading) {
+        return;
+      }
 
       if (user.isAuthenticated && user.walletAddress && supabase) {
         const { data, error } = await supabase
@@ -235,14 +279,20 @@ export default function Home() {
 
             // Check if notifications need to be enabled
             if (!data.notifications_enabled && MiniKit.isInstalled()) {
+              console.log('[Frontend] Onboarding complete but notifications not enabled');
+              // Check current MiniKit permission status
               try {
                 const { finalPayload } = await MiniKit.commandsAsync.getPermissions();
                 if (finalPayload.status === 'success') {
                   const hasNotifications = finalPayload.permissions.notifications;
                   if (!hasNotifications) {
+                    console.log('[Frontend] Showing notification prompt');
                     setShowNotificationPrompt(true);
                   } else {
-                    // Auto-sync if already granted
+                    console.log(
+                      '✅ [NOTIFICATION ENABLED #4] Auto-sync - MiniKit already has permission, syncing to DB'
+                    );
+                    // Sync to DB
                     await fetch('/api/user/status', {
                       method: 'POST',
                       headers: { 'Content-Type': 'application/json' },
@@ -253,7 +303,9 @@ export default function Home() {
                     });
                   }
                 }
-              } catch (e) {}
+              } catch (e) {
+                console.error('[Frontend] Error checking notification permissions:', e);
+              }
             }
           } else {
             setShowOnboarding(true);

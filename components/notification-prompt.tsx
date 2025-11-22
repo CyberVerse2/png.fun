@@ -23,29 +23,22 @@ export function NotificationPrompt({ isOpen, onOpenChange, onComplete }: Notific
 
   const handleEnable = async () => {
     if (!MiniKit.isInstalled()) {
-      console.log('[NotificationPrompt] MiniKit not installed, skipping');
       onComplete(false);
       return;
     }
 
     setLoading(true);
     try {
-      console.log('[NotificationPrompt] Requesting notification permission...');
       const { finalPayload } = await MiniKit.commandsAsync.requestPermission({
         permission: Permission.Notifications
       });
 
-      console.log('[NotificationPrompt] Permission result:', finalPayload);
-
       if (finalPayload.status === 'success' || finalPayload.error_code === 'already_granted') {
-        console.log('✅ [NOTIFICATION ENABLED #3] Prompt - User enabled notifications');
         onComplete(true);
       } else {
-        console.log('❌ [NOTIFICATION DISABLED] Prompt - User denied/skipped');
         onComplete(false);
       }
     } catch (error) {
-      console.error('[NotificationPrompt] Error requesting permission:', error);
       onComplete(false);
     } finally {
       setLoading(false);
@@ -53,7 +46,6 @@ export function NotificationPrompt({ isOpen, onOpenChange, onComplete }: Notific
   };
 
   const handleSkip = () => {
-    console.log('[NotificationPrompt] User skipped notifications');
     onComplete(false);
   };
 
