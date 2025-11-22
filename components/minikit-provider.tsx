@@ -33,7 +33,7 @@ export default function MiniKitProvider({ children }: { children: ReactNode }) {
     // Automatically authenticate on app load (silent, non-blocking)
     const initAuth = async () => {
       // Wait a bit for MiniKit to be ready
-      await new Promise(resolve => setTimeout(resolve, 500))
+      await new Promise(resolve => setTimeout(resolve, 1000))
       
       if (MiniKit.isInstalled()) {
         const success = await authenticate()
@@ -60,9 +60,11 @@ export default function MiniKitProvider({ children }: { children: ReactNode }) {
       const { nonce } = await res.json()
 
       // Request wallet authentication
-      const { finalPayload } = await MiniKit.commandsAsync.walletAuth({
+      const { commandPayload: generateMessageResult, finalPayload } = await MiniKit.commandsAsync.walletAuth({
         nonce,
+        requestId: '0', // Optional, but good practice
         expirationTime: new Date(new Date().getTime() + 7 * 24 * 60 * 60 * 1000),
+        notBefore: new Date(new Date().getTime() - 24 * 60 * 60 * 1000),
         statement: "Sign in to PNG.FUN",
       } as WalletAuthInput)
 

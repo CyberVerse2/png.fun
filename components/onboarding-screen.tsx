@@ -7,6 +7,7 @@ import { Camera, Trophy, Users } from "lucide-react"
 import { motion, AnimatePresence } from "framer-motion"
 import { SuccessScreen } from "./success-screen"
 import { MiniKit, Permission } from "@worldcoin/minikit-js"
+import { useUser, useAuth } from "@/components/minikit-provider"
 
 interface OnboardingScreenProps {
   onComplete: (notificationsEnabled: boolean) => void
@@ -16,6 +17,8 @@ export function OnboardingScreen({ onComplete }: OnboardingScreenProps) {
   const [step, setStep] = React.useState(0)
   const [showSuccess, setShowSuccess] = React.useState(false)
   const [notificationsEnabled, setNotificationsEnabled] = React.useState(false)
+  const { isAuthenticated } = useUser()
+  const authenticate = useAuth()
 
   const steps = [
     {
@@ -48,7 +51,18 @@ export function OnboardingScreen({ onComplete }: OnboardingScreenProps) {
   ]
 
   const handleGetStarted = async () => {
-    // Request notification permissions
+    // 1. Authenticate if needed
+    if (!isAuthenticated) {
+      const success = await authenticate()
+      if (!success) {
+        console.log("Authentication failed or cancelled")
+        return
+      }
+      // Wait for the auth drawer to close before requesting permissions
+      await new Promise(resolve => setTimeout(resolve, 1000))
+    }
+
+    // 2. Request notification permissions
     if (MiniKit.isInstalled()) {
       try {
         const { finalPayload } = await MiniKit.commandsAsync.requestPermission({
@@ -58,18 +72,30 @@ export function OnboardingScreen({ onComplete }: OnboardingScreenProps) {
         if (finalPayload.status === 'success') {
           console.log("Notification permission granted")
           setNotificationsEnabled(true)
+          setShowSuccess(true)
         } else {
-          console.log("Notification permission denied/failed:", finalPayload)
-          setNotificationsEnabled(false)
+          // Check for specific error codes
+          if (finalPayload.status === 'error' && finalPayload.error_code === 'already_granted') {
+            console.log("Notification permission already granted")
+            setNotificationsEnabled(true)
+            setShowSuccess(true)
+          } else {
+            console.log("Notification permission denied/failed:", finalPayload)
+            setNotificationsEnabled(false)
+            // Show feedback to user
+            alert("Please enable notifications to continue.")
+          }
         }
       } catch (error) {
         console.log("Notification permission request error:", error)
         setNotificationsEnabled(false)
+        alert("Something went wrong requesting permissions. Please try again.")
       }
+    } else {
+      // Fallback for browser/dev environment where MiniKit isn't installed
+      console.log("MiniKit not installed, skipping notifications")
+      setShowSuccess(true)
     }
-    
-    // Show success screen
-    setShowSuccess(true)
   }
 
   const handleNext = () => {
@@ -82,7 +108,7 @@ export function OnboardingScreen({ onComplete }: OnboardingScreenProps) {
   }
 
   if (showSuccess) {
-    return <SuccessScreen type="onboarding" onContinue={() => onComplete(notificationsEnabled)} />
+    return <SuccessScreen type="onboarding" onContinue={() => onComplete(notificationsEnabled)} notificationsEnabled={notificationsEnabled} />
   }
 
   return (
@@ -171,7 +197,7 @@ export function OnboardingScreen({ onComplete }: OnboardingScreenProps) {
         {/* Action Button */}
         <motion.div whileTap={{ scale: 0.98 }}>
           <NeoButton variant="primary" size="lg" onClick={handleNext} className="w-full">
-            {step < steps.length - 1 ? "Next" : "Get Started"}
+            {step < steps.length - 1 ? "Next" : (isAuthenticated ? "Get Started" : "Connect World ID")}
           </NeoButton>
         </motion.div>
 

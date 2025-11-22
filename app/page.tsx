@@ -225,6 +225,7 @@ export default function Home() {
   // Get authenticated user
   const user = useUser()
 
+
   // Fetch user ID and verification status from database when wallet address is available
   useEffect(() => {
     const fetchUserData = async () => {
@@ -282,9 +283,8 @@ export default function Home() {
           }
         }
       } else if (!user.isAuthenticated) {
-        // Not authenticated, show onboarding by default or just app?
-        // Let's show app, assuming they need to connect first
-        setShowOnboarding(false) 
+        // Not authenticated, show onboarding to guide them to sign in
+        setShowOnboarding(true) 
       }
 
       setCheckingOnboarding(false)
@@ -541,9 +541,7 @@ export default function Home() {
     setShowProfile(false)
   }
 
-  useEffect(() => {
-    // Additional setup or side effects can be added here
-  }, [])
+
 
   if (showOnboarding) {
     return <OnboardingScreen onComplete={handleOnboardingComplete} />
