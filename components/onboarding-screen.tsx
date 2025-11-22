@@ -69,15 +69,19 @@ export function OnboardingScreen({ onComplete }: OnboardingScreenProps) {
         permission: Permission.Notifications,
       })
 
+      console.log("Permission response:", finalPayload)
+      
+      // The finalPayload for requestPermission has status directly
       if (finalPayload.status === "success") {
-        console.log("Notifications enabled")
+        console.log("Notifications enabled successfully")
+        setShowSuccess(true)
+      } else if (finalPayload.status === "error") {
+        console.error("Permission request error:", finalPayload)
+        // Still show success to not block the user
         setShowSuccess(true)
       } else {
-        console.error("Permission request failed", finalPayload)
-        // Even if failed, we might want to show success or just proceed?
-        // For now, let's show success to not block the user, or maybe just call onComplete directly if we want to skip success screen on failure.
-        // User said "once they add the miniapp", implying success.
-        // But to be safe and friendly, let's show success (maybe they added it before).
+        // Unexpected status, but proceed anyway
+        console.warn("Unexpected permission response:", finalPayload)
         setShowSuccess(true)
       }
     } catch (error) {
