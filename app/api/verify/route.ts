@@ -1,31 +1,33 @@
 import { NextRequest, NextResponse } from "next/server"
 import { verifyCloudProof, IVerifyResponse, ISuccessResult } from "@worldcoin/minikit-js"
 
-export async function GET() {
-  // In a real app, you should generate a unique nonce and store it
-  const nonce = crypto.randomUUID().replace(/-/g, "")
-  return NextResponse.json({ nonce })
+interface IRequestPayload {
+  payload: ISuccessResult
+  action: string
+  signal: string | undefined
 }
 
 export async function POST(req: NextRequest) {
-  const { payload, nonce } = await req.json()
+  const { payload, action, signal } = (await req.json()) as IRequestPayload
+  const app_id = process.env.APP_ID as `app_${string}` || "app_a9e1e8a3c65d60bcf0432ec93883b524"
+  
+  try {
+    const verifyRes = (await verifyCloudProof(payload, app_id, action, signal)) as IVerifyResponse
 
-  // In a real app, you would verify the proof with World ID API
-  // For this demo/staging environment, we'll simulate a successful verification
-  // if the payload structure looks correct.
-
-  // NOTE: You need to set these environment variables for real verification
-  // const app_id = process.env.APP_ID
-  // const action = process.env.ACTION
-
-  // const verifyRes = await verifyCloudProof(payload, app_id, action, nonce)
-
-  // Mock success for now
-  const mockSuccess = true
-
-  if (mockSuccess) {
-    return NextResponse.json({ success: true })
-  } else {
-    return NextResponse.json({ success: false, error: "Verification failed" })
+    if (verifyRes.success) {
+      // This is where you should perform backend actions if the verification succeeds
+      // Such as, setting a user as "verified" in a database
+      return NextResponse.json({ verifyRes, status: 200 })
+    } else {
+      // This is where you should handle errors from the World ID /verify endpoint.
+      // Usually these errors are due to a user having already verified.
+      return NextResponse.json({ verifyRes, status: 400 })
+    }
+  } catch (error) {
+    console.error("Verification error:", error)
+    return NextResponse.json({ 
+      error: "Internal verification error",
+      status: 500 
+    })
   }
 }

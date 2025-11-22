@@ -8,7 +8,7 @@ import { VoteStack } from "@/components/vote-stack"
 import { LeaderboardScreen } from "@/components/leaderboard-screen"
 import { ProfileScreen } from "@/components/profile-screen"
 import { OnboardingScreen } from "@/components/onboarding-screen"
-// import { HumanVerificationModal } from "@/components/human-verification-modal"
+import { HumanVerificationModal } from "@/components/human-verification-modal"
 import { PhotoPreviewScreen } from "@/components/photo-preview-screen"
 import { SuccessScreen } from "@/components/success-screen"
 import { useEffect } from "react"
@@ -297,12 +297,11 @@ export default function Home() {
       </div>
       <BottomNav activeTab={activeTab} onTabChange={handleTabChange} onCameraClick={handleCameraClick} />
 
-      {/* HumanVerificationModal removed as per user deletion */}
-      {/* <HumanVerificationModal
+      <HumanVerificationModal
         isOpen={isVerificationOpen}
         onOpenChange={setIsVerificationOpen}
         onVerify={handleVerify}
-      /> */}
+      />
 
       {showPhotoPreview && (
         <PhotoPreviewScreen photoUrl={capturedPhotoUrl} onRetake={handleRetake} onSend={handleSend} />
