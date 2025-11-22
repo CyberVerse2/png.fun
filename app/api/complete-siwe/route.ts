@@ -6,10 +6,12 @@ import { supabaseAdmin } from "@/lib/supabase"
 interface IRequestPayload {
   payload: MiniAppWalletAuthSuccessPayload
   nonce: string
+  username?: string
+  profilePictureUrl?: string
 }
 
 export async function POST(req: NextRequest) {
-  const { payload, nonce } = (await req.json()) as IRequestPayload
+  const { payload, nonce, username, profilePictureUrl } = (await req.json()) as IRequestPayload
   
   // Verify the nonce matches the one we created
   const cookieStore = await cookies()
@@ -38,23 +40,24 @@ export async function POST(req: NextRequest) {
         .eq('wallet_address', payload.address)
         .single()
 
+      const userData = {
+        wallet_address: payload.address,
+        username: username || null,
+        profile_picture_url: profilePictureUrl || null,
+        updated_at: new Date().toISOString(),
+      }
+
       if (existingUser) {
         // Update existing user
         await supabaseAdmin
           .from('users')
-          .update({
-            updated_at: new Date().toISOString(),
-          })
+          .update(userData)
           .eq('wallet_address', payload.address)
       } else {
         // Create new user
         await supabaseAdmin
           .from('users')
-          .insert({
-            wallet_address: payload.address,
-            username: null, // Will be populated from MiniKit
-            profile_picture_url: null,
-          })
+          .insert(userData)
       }
       
       return NextResponse.json({

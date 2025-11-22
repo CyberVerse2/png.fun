@@ -65,7 +65,12 @@ export default function MiniKitProvider({ children }: { children: ReactNode }) {
         const verifyRes = await fetch("/api/complete-siwe", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ payload: finalPayload, nonce }),
+          body: JSON.stringify({ 
+            payload: finalPayload, 
+            nonce,
+            username: MiniKit.user?.username,
+            profilePictureUrl: MiniKit.user?.profilePictureUrl,
+          }),
         })
 
         const verifyData = await verifyRes.json()

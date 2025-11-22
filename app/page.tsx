@@ -13,6 +13,8 @@ import { PhotoPreviewScreen } from "@/components/photo-preview-screen"
 import { SuccessScreen } from "@/components/success-screen"
 import { useEffect } from "react"
 import { AnimatePresence, motion } from "framer-motion"
+import { useUser } from "@/components/minikit-provider"
+import { supabase } from "@/lib/supabase"
 
 // Mock data
 const mockPhotos = [
@@ -213,6 +215,28 @@ export default function Home() {
   const [loading, setLoading] = React.useState(true)
   const [userId, setUserId] = React.useState<string | null>(null)
 
+  // Get authenticated user
+  const user = useUser()
+
+  // Fetch user ID from database when wallet address is available
+  useEffect(() => {
+    const fetchUserId = async () => {
+      if (user.isAuthenticated && user.walletAddress) {
+        const { data } = await supabase
+          .from('users')
+          .select('id')
+          .eq('wallet_address', user.walletAddress)
+          .single()
+        
+        if (data) {
+          setUserId(data.id)
+        }
+      }
+    }
+
+    fetchUserId()
+  }, [user.isAuthenticated, user.walletAddress])
+
   // Fetch active challenge
   const fetchChallenge = async () => {
     try {
@@ -321,9 +345,49 @@ export default function Home() {
     setIsVerificationOpen(true)
   }
 
-  const handleSend = () => {
-    setShowPhotoPreview(false)
-    setShowSuccess(true)
+  const handleSend = async () => {
+    if (!capturedPhotoUrl || !challenge || !userId) {
+      console.warn('Missing required data for submission:', { 
+        hasPhoto: !!capturedPhotoUrl, 
+        hasChallenge: !!challenge, 
+        hasUserId: !!userId 
+      })
+      setShowPhotoPreview(false)
+      setShowSuccess(true)
+      return
+    }
+
+    try {
+      setLoading(true)
+      
+      // Submit photo to API
+      const response = await fetch('/api/submissions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          challengeId: challenge.id,
+          userId: userId,
+          photoData: capturedPhotoUrl, // base64 data URL
+        }),
+      })
+
+      const data = await response.json()
+      
+      if (response.ok && data.submission) {
+        console.log('Submission created:', data.submission)
+        // Refresh submissions to show the new one
+        await fetchSubmissions(challenge.id)
+      } else {
+        console.error('Submission failed:', data.error)
+      }
+    } catch (error) {
+      console.error('Error submitting photo:', error)
+    } finally {
+      setLoading(false)
+      setShowPhotoPreview(false)
+      setCapturedPhotoUrl(null)
+      setShowSuccess(true)
+    }
   }
 
   const handleSuccessContinue = () => {
