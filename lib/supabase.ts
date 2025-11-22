@@ -42,6 +42,8 @@ export type User = {
   current_streak: number
   total_wld_earned: number
   world_id_verified: boolean
+  onboarding_completed: boolean
+  notifications_enabled: boolean
   created_at: string
   updated_at: string
 }

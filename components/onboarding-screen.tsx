@@ -9,12 +9,13 @@ import { SuccessScreen } from "./success-screen"
 import { MiniKit, Permission } from "@worldcoin/minikit-js"
 
 interface OnboardingScreenProps {
-  onComplete: () => void
+  onComplete: (notificationsEnabled: boolean) => void
 }
 
 export function OnboardingScreen({ onComplete }: OnboardingScreenProps) {
   const [step, setStep] = React.useState(0)
   const [showSuccess, setShowSuccess] = React.useState(false)
+  const [notificationsEnabled, setNotificationsEnabled] = React.useState(false)
 
   const steps = [
     {
@@ -50,11 +51,20 @@ export function OnboardingScreen({ onComplete }: OnboardingScreenProps) {
     // Request notification permissions
     if (MiniKit.isInstalled()) {
       try {
-        await MiniKit.commandsAsync.requestPermission({
+        const { finalPayload } = await MiniKit.commandsAsync.requestPermission({
           permission: Permission.Notifications,
         })
+        
+        if (finalPayload.status === 'success') {
+          console.log("Notification permission granted")
+          setNotificationsEnabled(true)
+        } else {
+          console.log("Notification permission denied/failed:", finalPayload)
+          setNotificationsEnabled(false)
+        }
       } catch (error) {
-        console.log("Notification permission request:", error)
+        console.log("Notification permission request error:", error)
+        setNotificationsEnabled(false)
       }
     }
     
@@ -72,7 +82,7 @@ export function OnboardingScreen({ onComplete }: OnboardingScreenProps) {
   }
 
   if (showSuccess) {
-    return <SuccessScreen type="onboarding" onContinue={onComplete} />
+    return <SuccessScreen type="onboarding" onContinue={() => onComplete(notificationsEnabled)} />
   }
 
   return (
@@ -172,7 +182,7 @@ export function OnboardingScreen({ onComplete }: OnboardingScreenProps) {
             animate={{ opacity: 1 }}
             whileHover={{ scale: 1.1, color: "var(--foreground)" }}
             whileTap={{ scale: 0.95 }}
-            onClick={onComplete}
+            onClick={() => onComplete(false)}
             className="w-full mt-4 text-sm font-bold text-muted-foreground uppercase tracking-wide transition-colors"
           >
             Skip

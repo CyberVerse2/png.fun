@@ -16,6 +16,7 @@ import { useEffect } from "react"
 import { AnimatePresence, motion } from "framer-motion"
 import { useUser } from "@/components/minikit-provider"
 import { supabase } from "@/lib/supabase"
+import { MiniKit } from "@worldcoin/minikit-js"
 
 // Mock data
 const mockPhotos = [
@@ -198,7 +199,7 @@ function calculateTimeRemaining(endTime: string): string {
 }
 
 export default function Home() {
-  const [showOnboarding, setShowOnboarding] = React.useState(true)
+  const [showOnboarding, setShowOnboarding] = React.useState(false) // Start as false, check localStorage
   const [showOnboardingSuccess, setShowOnboardingSuccess] = React.useState(false)
   const [activeTab, setActiveTab] = React.useState<"vote" | "leaderboard">("vote")
   const [showProfile, setShowProfile] = React.useState(false)
@@ -229,18 +230,51 @@ export default function Home() {
         console.log('[Frontend] Fetching user data for wallet:', user.walletAddress)
         const { data, error } = await supabase
           .from('users')
-          .select('id, world_id_verified')
+          .select('id, world_id_verified, onboarding_completed, notifications_enabled')
           .eq('wallet_address', user.walletAddress)
           .single()
         
         if (error) {
           console.error('[Frontend] Error fetching user data:', error)
+          // If error (likely user doesn't exist yet), show onboarding
+          setShowOnboarding(true)
         } else if (data) {
-          console.log('[Frontend] User data found:', data.id, 'Verified:', data.world_id_verified)
+          console.log('[Frontend] User data found:', data)
           setUserId(data.id)
           setIsWorldIdVerified(data.world_id_verified || false)
-        } else {
-          console.warn('[Frontend] No user found for wallet:', user.walletAddress)
+          
+          // Check onboarding status from DB
+          if (data.onboarding_completed) {
+            console.log('[Frontend] User has completed onboarding (DB)')
+            setShowOnboarding(false)
+          } else {
+            console.log('[Frontend] User has NOT completed onboarding (DB)')
+            setShowOnboarding(true)
+          }
+
+          // Sync notification status if MiniKit is installed
+          if (MiniKit.isInstalled()) {
+            try {
+              const { finalPayload } = await MiniKit.commandsAsync.getPermissions()
+              if (finalPayload.status === 'success') {
+                const hasNotifications = finalPayload.permissions.notifications
+                if (hasNotifications !== data.notifications_enabled) {
+                  console.log('[Frontend] Syncing notification status to DB:', hasNotifications)
+                  // Update DB if mismatch
+                  await fetch('/api/user/status', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                      walletAddress: user.walletAddress,
+                      notificationsEnabled: hasNotifications
+                    })
+                  })
+                }
+              }
+            } catch (e) {
+              console.error('[Frontend] Error checking permissions:', e)
+            }
+          }
         }
       } else if (!supabase) {
         console.warn('[Frontend] Supabase client not initialized - check environment variables')
@@ -450,7 +484,26 @@ export default function Home() {
     setShowSuccess(false)
   }
 
-  const handleOnboardingComplete = () => {
+  const handleOnboardingComplete = async (notificationsEnabled: boolean) => {
+    console.log('[Frontend] Onboarding completed - updating DB. Notifications:', notificationsEnabled)
+    
+    if (user.walletAddress) {
+      try {
+        await fetch('/api/user/status', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            walletAddress: user.walletAddress,
+            onboardingCompleted: true,
+            notificationsEnabled: notificationsEnabled
+          })
+        })
+        console.log('[Frontend] DB updated successfully')
+      } catch (error) {
+        console.error('[Frontend] Error updating DB:', error)
+      }
+    }
+    
     setShowOnboarding(false)
     // Success screen is now handled within OnboardingScreen
     // setShowOnboardingSuccess(true) 
