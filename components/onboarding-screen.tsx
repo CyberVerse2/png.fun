@@ -58,8 +58,8 @@ export function OnboardingScreen({ onComplete }: OnboardingScreenProps) {
       }
     }
     
-    // Complete onboarding regardless of permission outcome
-    onComplete()
+    // Show success screen
+    setShowSuccess(true)
   }
 
   const handleNext = () => {
