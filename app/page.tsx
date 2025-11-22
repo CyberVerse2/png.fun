@@ -307,13 +307,19 @@ export default function Home() {
           .eq('challenge_id', challenge.id)
           .single()
         
+        if (error && error.code !== 'PGRST116') { // PGRST116 is "Row not found" which is expected
+             console.error('[Frontend] Error checking submission:', error)
+        }
+
         if (data) {
-          console.log('[Frontend] User has already submitted for this challenge')
+          console.log('[Frontend] User has already submitted for this challenge. Submission ID:', data.id)
           setHasSubmittedToday(true)
         } else {
-          console.log('[Frontend] No existing submission found')
+          console.log('[Frontend] No existing submission found for this challenge.')
           setHasSubmittedToday(false)
         }
+      } else {
+        console.log('[Frontend] Skipping submission check - missing dependencies:', { hasUserId: !!userId, hasChallenge: !!challenge, hasSupabase: !!supabase })
       }
     }
 
