@@ -4,6 +4,7 @@ import { Badge } from "@/components/ui/badge"
 import { NeoCard } from "./neo-card"
 import { Trophy, Zap, Flame } from "lucide-react"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { useUser } from "./minikit-provider"
 
 interface ProfileData {
   username: string
@@ -37,15 +38,27 @@ interface ProfileScreenProps {
 }
 
 export function ProfileScreen({ data }: ProfileScreenProps) {
+  const user = useUser()
+  
+  // Use real user data if authenticated, otherwise fall back to mock data
+  const displayUsername = user.isAuthenticated && user.username ? user.username : data.username
+  const displayAvatar = user.isAuthenticated && user.profilePictureUrl ? user.profilePictureUrl : data.avatarUrl
+  const displayWalletAddress = user.walletAddress
+  
   return (
     <div className="flex-1 overflow-y-auto px-6 pb-24 pt-6">
       {/* Profile Header */}
       <div className="text-center mb-6">
         <Avatar className="h-24 w-24 border-[5px] border-foreground mx-auto mb-4 neo-shadow">
-          <AvatarImage src={data.avatarUrl || "/placeholder.svg"} />
-          <AvatarFallback className="text-3xl font-black">{data.username[0].toUpperCase()}</AvatarFallback>
+          <AvatarImage src={displayAvatar || "/placeholder.svg"} />
+          <AvatarFallback className="text-3xl font-black">{displayUsername[0].toUpperCase()}</AvatarFallback>
         </Avatar>
-        <h1 className="text-2xl font-black uppercase mb-2">{data.username}</h1>
+        <h1 className="text-2xl font-black uppercase mb-2">{displayUsername}</h1>
+        {displayWalletAddress && (
+          <p className="text-xs text-muted-foreground mb-2 font-mono">
+            {displayWalletAddress.slice(0, 6)}...{displayWalletAddress.slice(-4)}
+          </p>
+        )}
         <Badge className="bg-primary text-primary-foreground font-black border-2 border-foreground">
           <Zap className="h-3 w-3 mr-1" />
           {data.wld} WLD
