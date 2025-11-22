@@ -29,6 +29,10 @@ export const metadata: Metadata = {
   },
 }
 
+import dynamic from "next/dynamic"
+
+const MiniKitProvider = dynamic(() => import("@/components/minikit-provider"), { ssr: false })
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -36,7 +40,9 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className={`font-sans antialiased`}>{children}</body>
+      <body className={`font-sans antialiased`}>
+        <MiniKitProvider>{children}</MiniKitProvider>
+      </body>
     </html>
   )
 }
