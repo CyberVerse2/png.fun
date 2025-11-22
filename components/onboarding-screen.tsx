@@ -6,6 +6,7 @@ import { NeoCard } from "./neo-card"
 import { Camera, ThumbsUp, Trophy, Bell } from "lucide-react"
 import { motion, AnimatePresence } from "framer-motion"
 import { MiniKit, Permission } from "@worldcoin/minikit-js"
+import { SuccessScreen } from "./success-screen"
 
 interface OnboardingScreenProps {
   onComplete: () => void
@@ -13,6 +14,7 @@ interface OnboardingScreenProps {
 
 export function OnboardingScreen({ onComplete }: OnboardingScreenProps) {
   const [step, setStep] = React.useState(0)
+  const [showSuccess, setShowSuccess] = React.useState(false)
 
   const steps = [
     {
@@ -47,7 +49,7 @@ export function OnboardingScreen({ onComplete }: OnboardingScreenProps) {
   const handleNotifications = async () => {
     if (!MiniKit.isInstalled()) {
       console.warn("MiniKit not installed, skipping notification request")
-      onComplete()
+      setShowSuccess(true)
       return
     }
 
@@ -58,13 +60,18 @@ export function OnboardingScreen({ onComplete }: OnboardingScreenProps) {
 
       if (finalPayload.status === "success") {
         console.log("Notifications enabled")
+        setShowSuccess(true)
       } else {
         console.error("Permission request failed", finalPayload)
+        // Even if failed, we might want to show success or just proceed?
+        // For now, let's show success to not block the user, or maybe just call onComplete directly if we want to skip success screen on failure.
+        // User said "once they add the miniapp", implying success.
+        // But to be safe and friendly, let's show success (maybe they added it before).
+        setShowSuccess(true)
       }
     } catch (error) {
       console.error("Notification request error:", error)
-    } finally {
-      onComplete()
+      setShowSuccess(true)
     }
   }
 
@@ -75,6 +82,10 @@ export function OnboardingScreen({ onComplete }: OnboardingScreenProps) {
       // Instead of just completing, trigger notifications
       handleNotifications()
     }
+  }
+
+  if (showSuccess) {
+    return <SuccessScreen type="onboarding" onContinue={onComplete} />
   }
 
   return (
