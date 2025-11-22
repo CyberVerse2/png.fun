@@ -1,108 +1,116 @@
-import { NextRequest, NextResponse } from "next/server"
-import { cookies } from "next/headers"
-import { MiniAppWalletAuthSuccessPayload, verifySiweMessage } from "@worldcoin/minikit-js"
-import { supabaseAdmin } from "@/lib/supabase"
+import { NextRequest, NextResponse } from 'next/server';
+import { cookies } from 'next/headers';
+import { MiniAppWalletAuthSuccessPayload, verifySiweMessage } from '@worldcoin/minikit-js';
+import { supabaseAdmin } from '@/lib/supabase';
 
 interface IRequestPayload {
-  payload: MiniAppWalletAuthSuccessPayload
-  nonce: string
-  username?: string
-  profilePictureUrl?: string
+  payload: MiniAppWalletAuthSuccessPayload;
+  nonce: string;
+  username?: string;
+  profilePictureUrl?: string;
 }
 
 export async function POST(req: NextRequest) {
-  console.log('[API] SIWE verification request received')
-  
-  const { payload, nonce, username, profilePictureUrl } = (await req.json()) as IRequestPayload
-  console.log('[API] Request data:', { 
-    address: payload.address, 
-    username, 
-    hasProfilePicture: !!profilePictureUrl 
-  })
-  
+  console.log('[API] SIWE verification request received');
+
+  const { payload, nonce, username, profilePictureUrl } = (await req.json()) as IRequestPayload;
+  console.log('[API] Request data:', {
+    address: payload.address,
+    username,
+    hasProfilePicture: !!profilePictureUrl
+  });
+
   // Verify the nonce matches the one we created
-  const cookieStore = await cookies()
-  const storedNonce = cookieStore.get("siwe")?.value
-  
+  const cookieStore = await cookies();
+  const storedNonce = cookieStore.get('siwe')?.value;
+
   if (!storedNonce || storedNonce !== nonce) {
-    console.error('[API] Invalid nonce:', { storedNonce: !!storedNonce, match: storedNonce === nonce })
-    return NextResponse.json({
-      status: "error",
-      isValid: false,
-      message: "Invalid nonce",
-    }, { status: 400 })
+    console.error('[API] Invalid nonce:', {
+      storedNonce: !!storedNonce,
+      match: storedNonce === nonce
+    });
+    return NextResponse.json(
+      {
+        status: 'error',
+        isValid: false,
+        message: 'Invalid nonce'
+      },
+      { status: 400 }
+    );
   }
-  
+
   try {
     // Verify the SIWE message signature
-    console.log('[API] Verifying SIWE message...')
-    const validMessage = await verifySiweMessage(payload, nonce)
-    
+    console.log('[API] Verifying SIWE message...');
+    const validMessage = await verifySiweMessage(payload, nonce);
+
     if (validMessage.isValid) {
-      console.log('[API] SIWE verification successful')
-      
+      console.log('[API] SIWE verification successful');
+
       // Clear the used nonce
-      const cookieStore = await cookies()
-      cookieStore.delete("siwe")
-      
+      cookieStore.delete('siwe');
+
       // Create or update user in Supabase
-      console.log('[API] Checking for existing user...')
+      console.log('[API] Checking for existing user...');
       const { data: existingUser } = await supabaseAdmin
         .from('users')
         .select('*')
         .eq('wallet_address', payload.address)
-        .single()
+        .single();
 
       const userData = {
         wallet_address: payload.address,
         username: username || null,
         profile_picture_url: profilePictureUrl || null,
-        updated_at: new Date().toISOString(),
-      }
+        updated_at: new Date().toISOString()
+      };
 
       if (existingUser) {
-        console.log('[API] Updating existing user:', existingUser.id)
+        console.log('[API] Updating existing user:', existingUser.id);
         // Update existing user
-        await supabaseAdmin
-          .from('users')
-          .update(userData)
-          .eq('wallet_address', payload.address)
-        console.log('[API] User updated successfully')
+        await supabaseAdmin.from('users').update(userData).eq('wallet_address', payload.address);
+        console.log('[API] User updated successfully');
       } else {
-        console.log('[API] Creating new user')
+        console.log('[API] Creating new user');
         // Create new user
         const { data: newUser, error: insertError } = await supabaseAdmin
           .from('users')
           .insert(userData)
           .select()
-          .single()
-        
+          .single();
+
         if (insertError) {
-          console.error('[API] Error creating user:', insertError)
+          console.error('[API] Error creating user:', insertError);
         } else {
-          console.log('[API] New user created:', newUser.id)
+          console.log('[API] New user created:', newUser.id);
         }
       }
-      
+
       return NextResponse.json({
-        status: "success",
+        status: 'success',
         isValid: true,
-        address: payload.address,
-      })
+        address: payload.address
+      });
     } else {
-      console.error('[API] SIWE verification failed')
-      return NextResponse.json({
-        status: "error",
-        isValid: false,
-        message: "Invalid signature",
-      }, { status: 400 })
+      console.error('[API] SIWE verification failed');
+      return NextResponse.json(
+        {
+          status: 'error',
+          isValid: false,
+          message: 'Invalid signature'
+        },
+        { status: 400 }
+      );
     }
   } catch (error: any) {
-    console.error('[API] SIWE verification error:', error)
-    return NextResponse.json({
-      status: "error",
-      isValid: false,
-      message: error.message || "Verification failed",
-    }, { status: 500 })
+    console.error('[API] SIWE verification error:', error);
+    return NextResponse.json(
+      {
+        status: 'error',
+        isValid: false,
+        message: error.message || 'Verification failed'
+      },
+      { status: 500 }
+    );
   }
 }

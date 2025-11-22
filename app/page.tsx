@@ -69,7 +69,6 @@ const mockPhotos = [
 
 const mockLeaderboard = [
   {
-    rank: 1,
     username: 'PhotoPro',
     avatarUrl: '/placeholder.svg?height=40&width=40',
     wld: 12450,
@@ -77,7 +76,6 @@ const mockLeaderboard = [
     imageUrl: '/winning-photo.jpg'
   },
   {
-    rank: 2,
     username: 'SnapMaster',
     avatarUrl: '/placeholder.svg?height=40&width=40',
     wld: 11200,
@@ -85,7 +83,6 @@ const mockLeaderboard = [
     imageUrl: '/second-place-photo.jpg'
   },
   {
-    rank: 3,
     username: 'LensLegend',
     avatarUrl: '/placeholder.svg?height=40&width=40',
     wld: 10800,
@@ -93,7 +90,6 @@ const mockLeaderboard = [
     imageUrl: '/third-place-photo.jpg'
   },
   {
-    rank: 4,
     username: 'ShutterBug',
     avatarUrl: '/placeholder.svg?height=40&width=40',
     wld: 9500,
@@ -101,11 +97,45 @@ const mockLeaderboard = [
     imageUrl: '/placeholder.svg?height=400&width=600'
   },
   {
-    rank: 5,
     username: 'PixelPerfect',
     avatarUrl: '/placeholder.svg?height=40&width=40',
     wld: 8900,
     wins: 12,
+    imageUrl: '/placeholder.svg?height=400&width=600'
+  },
+  {
+    username: 'FocusFanatic',
+    avatarUrl: '/placeholder.svg?height=40&width=40',
+    wld: 8200,
+    wins: 10,
+    imageUrl: '/placeholder.svg?height=400&width=600'
+  },
+  {
+    username: 'ApertureAce',
+    avatarUrl: '/placeholder.svg?height=40&width=40',
+    wld: 7500,
+    wins: 8,
+    imageUrl: '/placeholder.svg?height=400&width=600'
+  },
+  {
+    username: 'ISOIdol',
+    avatarUrl: '/placeholder.svg?height=40&width=40',
+    wld: 6800,
+    wins: 7,
+    imageUrl: '/placeholder.svg?height=400&width=600'
+  },
+  {
+    username: 'CameraKing',
+    avatarUrl: '/placeholder.svg?height=40&width=40',
+    wld: 6200,
+    wins: 5,
+    imageUrl: '/placeholder.svg?height=400&width=600'
+  },
+  {
+    username: 'ViewFinder',
+    avatarUrl: '/placeholder.svg?height=40&width=40',
+    wld: 5900,
+    wins: 4,
     imageUrl: '/placeholder.svg?height=400&width=600'
   }
 ];
@@ -218,7 +248,12 @@ export default function Home() {
   const [userId, setUserId] = React.useState<string | null>(null);
   const [isWorldIdVerified, setIsWorldIdVerified] = React.useState(false);
   const [hasSubmittedToday, setHasSubmittedToday] = React.useState(false);
+  const [userSubmission, setUserSubmission] = React.useState<any>(null);
   const [showAlreadySubmittedModal, setShowAlreadySubmittedModal] = React.useState(false);
+  const [userStats, setUserStats] = React.useState<{ wld: number; wins: number; rank?: number }>({
+    wld: 0,
+    wins: 0
+  });
 
   const [checkingOnboarding, setCheckingOnboarding] = React.useState(true);
 
@@ -235,7 +270,9 @@ export default function Home() {
         console.log('[Frontend] Fetching user data for wallet:', user.walletAddress);
         const { data, error } = await supabase
           .from('users')
-          .select('id, world_id_verified, onboarding_completed, notifications_enabled')
+          .select(
+            'id, world_id_verified, onboarding_completed, notifications_enabled, username, profile_picture_url, total_wld_earned, total_wins'
+          )
           .eq('wallet_address', user.walletAddress)
           .single();
 
@@ -248,6 +285,12 @@ export default function Home() {
           setUserId(data.id);
           setIsWorldIdVerified(data.world_id_verified || false);
 
+          // Store user stats for leaderboard
+          setUserStats({
+            wld: data.total_wld_earned || 0,
+            wins: data.total_wins || 0
+          });
+
           // Check onboarding status from DB
           if (data.onboarding_completed) {
             console.log('[Frontend] User has completed onboarding (DB)');
@@ -255,6 +298,28 @@ export default function Home() {
           } else {
             console.log('[Frontend] User has NOT completed onboarding (DB)');
             setShowOnboarding(true);
+          }
+
+          // If username/PFP is missing in DB, sync from MiniKit
+          if (
+            (!data.username || !data.profile_picture_url) &&
+            (MiniKit.user?.username || MiniKit.user?.profilePictureUrl)
+          ) {
+            console.log('[Frontend] Syncing missing username/PFP from MiniKit to DB');
+            try {
+              await fetch('/api/user/status', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  walletAddress: user.walletAddress,
+                  username: MiniKit.user.username,
+                  profilePictureUrl: MiniKit.user.profilePictureUrl
+                })
+              });
+              console.log('[Frontend] Username/PFP sync completed');
+            } catch (e) {
+              console.error('[Frontend] Error syncing username/PFP:', e);
+            }
           }
 
           // Sync notification status if MiniKit is installed
@@ -302,7 +367,7 @@ export default function Home() {
         });
         const { data, error } = await supabase
           .from('submissions')
-          .select('id')
+          .select('*')
           .eq('user_id', userId)
           .eq('challenge_id', challenge.id)
           .single();
@@ -318,9 +383,11 @@ export default function Home() {
             data.id
           );
           setHasSubmittedToday(true);
+          setUserSubmission(data);
         } else {
           console.log('[Frontend] No existing submission found for this challenge.');
           setHasSubmittedToday(false);
+          setUserSubmission(null);
         }
       } else {
         console.log('[Frontend] Skipping submission check - missing dependencies:', {
@@ -369,15 +436,23 @@ export default function Home() {
       console.log('[Frontend] Submissions response:', data.submissions?.length || 0, 'submissions');
       if (data.submissions) {
         // Transform to match expected format
-        const transformed = data.submissions.map((sub: any) => ({
-          id: sub.id,
-          imageUrl: sub.photo_url,
-          username: sub.user?.username || 'Anonymous',
-          avatarUrl: sub.user?.profile_picture_url || '/placeholder.svg',
-          rank: sub.rank,
-          wld: sub.total_wld_voted,
-          potentialWld: sub.total_wld_voted * 2
-        }));
+        const transformed = data.submissions.map((sub: any) => {
+          // Fallback to local username if this is the current user's submission and API returned null
+          let displayUsername = sub.user?.username;
+          if (!displayUsername && sub.user_id === userId && user.username) {
+            displayUsername = user.username;
+          }
+
+          return {
+            id: sub.id,
+            imageUrl: sub.photo_url,
+            username: displayUsername || 'Anonymous',
+            avatarUrl: sub.user?.profile_picture_url || '/placeholder.svg',
+            rank: sub.rank,
+            wld: sub.total_wld_voted,
+            potentialWld: sub.total_wld_voted * 2
+          };
+        });
         console.log('[Frontend] Transformed submissions:', transformed.length);
         setSubmissions(transformed);
       }
@@ -396,14 +471,36 @@ export default function Home() {
       const data = await res.json();
       console.log('[Frontend] Leaderboard response:', data.leaderboard?.length || 0, 'users');
       if (data.leaderboard) {
-        const transformed = data.leaderboard.map((user: any, index: number) => ({
+        let transformed = data.leaderboard.map((user: any, index: number) => ({
           rank: index + 1,
           username: user.username || 'Anonymous',
           avatarUrl: user.profile_picture_url || '/placeholder.svg',
-          wld: user.total_wld_earned,
-          wins: user.total_wins,
-          imageUrl: '/placeholder.svg'
+          wld: user.total_wld_earned || 0,
+          wins: user.total_wins || 0,
+          imageUrl: user.latest_photo_url || '/placeholder.svg',
+          walletAddress: user.wallet_address
         }));
+
+        // Calculate current user's rank
+        if (user.walletAddress) {
+          const userIndex = data.leaderboard.findIndex(
+            (u: any) => u.wallet_address === user.walletAddress
+          );
+          if (userIndex !== -1) {
+            setUserStats((prev) => ({ ...prev, rank: userIndex + 1 }));
+          }
+        }
+
+        // Fill with mock data if less than 10 users
+        if (transformed.length < 10) {
+          const needed = 10 - transformed.length;
+          const mockDataToAdd = mockLeaderboard.slice(0, needed).map((mock, index) => ({
+            ...mock,
+            rank: transformed.length + index + 1
+          }));
+          transformed = [...transformed, ...mockDataToAdd];
+        }
+
         console.log('[Frontend] Leaderboard transformed:', transformed.length, 'entries');
         setLeaderboardData(transformed);
       }
@@ -482,15 +579,21 @@ export default function Home() {
 
   const handleSend = async () => {
     if (!capturedPhotoUrl || !challenge || !userId) {
-      console.warn('Missing required data for submission:', {
+      console.error('[Frontend] Missing required data for submission:', {
         hasPhoto: !!capturedPhotoUrl,
         hasChallenge: !!challenge,
         hasUserId: !!userId
       });
+      alert('Cannot submit photo: Missing required data. Please try again.');
       setShowPhotoPreview(false);
-      setShowSuccess(true);
       return;
     }
+
+    console.log('[Frontend] Starting submission process...', {
+      challengeId: challenge.id,
+      userId: userId,
+      photoDataLength: capturedPhotoUrl.length
+    });
 
     try {
       setLoading(true);
@@ -506,22 +609,32 @@ export default function Home() {
         })
       });
 
+      console.log('[Frontend] Submission response status:', response.status);
       const data = await response.json();
+      console.log('[Frontend] Submission response data:', data);
 
       if (response.ok && data.submission) {
-        console.log('Submission created:', data.submission);
+        console.log('[Frontend] Submission created successfully:', data.submission.id);
+        // Update local state immediately to reflect submission
+        setHasSubmittedToday(true);
+        setUserSubmission(data.submission);
         // Refresh submissions to show the new one
         await fetchSubmissions(challenge.id);
+        // Refresh leaderboard to update rankings
+        await fetchLeaderboard();
+        // Show success screen only after successful submission
+        setShowSuccess(true);
       } else {
-        console.error('Submission failed:', data.error);
+        console.error('[Frontend] Submission failed:', data.error);
+        alert('Submission failed: ' + (data.error || 'Unknown error'));
       }
     } catch (error) {
-      console.error('Error submitting photo:', error);
+      console.error('[Frontend] Error submitting photo:', error);
+      alert('Error submitting photo. Please try again.');
     } finally {
       setLoading(false);
       setShowPhotoPreview(false);
       setCapturedPhotoUrl(null);
-      setShowSuccess(true);
     }
   };
 
@@ -537,24 +650,34 @@ export default function Home() {
 
     if (user.walletAddress) {
       try {
-        await fetch('/api/user/status', {
+        const response = await fetch('/api/user/status', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             walletAddress: user.walletAddress,
             onboardingCompleted: true,
-            notificationsEnabled: notificationsEnabled
+            notificationsEnabled: notificationsEnabled,
+            username: user.username || MiniKit.user?.username,
+            profilePictureUrl: user.profilePictureUrl || MiniKit.user?.profilePictureUrl
           })
         });
-        console.log('[Frontend] DB updated successfully');
+
+        if (!response.ok) {
+          throw new Error('Failed to update onboarding status');
+        }
+
+        console.log('[Frontend] DB updated successfully with username/PFP');
+        setShowOnboarding(false);
       } catch (error) {
         console.error('[Frontend] Error updating DB:', error);
+        alert('Error saving onboarding status. Please try again.');
+        // Don't hide onboarding on error
       }
+    } else {
+      // No wallet address, should not happen but handle gracefully
+      console.error('[Frontend] No wallet address available');
+      alert('Please connect your wallet first');
     }
-
-    setShowOnboarding(false);
-    // Success screen is now handled within OnboardingScreen
-    // setShowOnboardingSuccess(true)
   };
 
   const handleOnboardingSuccessContinue = () => {
@@ -636,7 +759,17 @@ export default function Home() {
               transition={{ duration: 0.2 }}
               className="flex-1 flex flex-col h-full"
             >
-              <LeaderboardScreen entries={leaderboardData} currentUserRank={15} />
+              <LeaderboardScreen
+                entries={leaderboardData}
+                currentUserRank={userStats.rank || 15}
+                currentUser={{
+                  username: user.username || 'You',
+                  avatarUrl: user.profilePictureUrl || '/placeholder.svg',
+                  wld: userStats.wld,
+                  wins: userStats.wins,
+                  imageUrl: userSubmission?.photo_url || '/placeholder.svg'
+                }}
+              />
             </motion.div>
           )}
         </AnimatePresence>

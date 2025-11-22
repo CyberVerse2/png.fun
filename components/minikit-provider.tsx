@@ -1,6 +1,6 @@
 'use client';
 
-import { ReactNode, useEffect, createContext, useContext, useState } from 'react';
+import { ReactNode, useEffect, createContext, useContext, useState, useCallback } from 'react';
 import { MiniKit, WalletAuthInput } from '@worldcoin/minikit-js';
 
 interface UserData {
@@ -53,7 +53,8 @@ export default function MiniKitProvider({ children }: { children: ReactNode }) {
     setUserData((prev) => ({ ...prev, isLoading: false }));
   }, []);
 
-  const authenticate = async (): Promise<boolean> => {
+  // Memoize authenticate function to prevent unnecessary re-renders
+  const authenticate = useCallback(async (): Promise<boolean> => {
     if (!MiniKit.isInstalled()) {
       console.log('MiniKit not installed, skipping auth');
       return false;
@@ -119,7 +120,7 @@ export default function MiniKitProvider({ children }: { children: ReactNode }) {
       console.error('Authentication error:', error);
       return false;
     }
-  };
+  }, []); // Empty dependency array since authenticate doesn't depend on userData state
 
   return (
     <UserContext.Provider value={{ user: userData, authenticate }}>{children}</UserContext.Provider>

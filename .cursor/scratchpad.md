@@ -2,29 +2,21 @@
 
 ## Background and Motivation
 
-The user wants to ensure that when a new submission is successfully created, the list of current submissions is immediately refreshed or fetched. This is likely to improve the user experience by showing the user's new submission or updating the feed immediately.
-
-Also, the user reported that refreshing the app triggers the World ID sign-in modal (drawer), which is annoying. They requested to check the database (or persistence) first.
+The user wants to ensure that when a new submission is successfully created, the list of current submissions is immediately refreshed or fetched. Also addressing several UI bugs.
+The user reported that username and pfp were not being saved in the flow.
 
 ## Key Challenges and Analysis
 
-- **Submission Refresh**: Addressed by disabling cache and forcing dynamic API.
-- **Auth Modal on Refresh**:
-  - **Root Cause**: `MiniKitProvider` was configured to automatically call `authenticate()` (which calls `walletAuth`) on every mount. `walletAuth` triggers the World ID drawer.
-  - **Solution**: Implement session persistence using `localStorage`.
-    - On mount, check `localStorage` for a valid session. If found, restore it and set `isAuthenticated = true`.
-    - Do NOT call `authenticate()` automatically if no session is found (let the user click "Connect" on the Onboarding screen).
-    - Save session to `localStorage` upon successful authentication.
+- **API Persistence**: `app/api/user/status/route.ts` was missing logic to handle `username` and `profilePictureUrl`.
+- **Frontend Sync**: `app/page.tsx` sync logic only sent `username` but not `profilePictureUrl`.
+- **Resolution**:
+  - Updated API route to accept and upsert `username` and `profilePictureUrl`.
+  - Updated Frontend sync call to send `profilePictureUrl` as well.
 
 ## High-level Task Breakdown
 
-1.  **Analyze Codebase**: Completed. Logic is in `app/page.tsx`.
-2.  **Ensure Fresh Data**:
-    - [x] Modify `app/page.tsx`: Add `{ cache: 'no-store' }` to the `fetch` call in `fetchSubmissions`.
-    - [x] Modify `app/api/submissions/route.ts`: Add `export const dynamic = 'force-dynamic'` to ensure the API route is not cached.
-3.  **Fix Auth Modal**:
-    - [x] Modify `components/minikit-provider.tsx` to use `localStorage` for session persistence and remove auto-auth.
-4.  **Verify**: Check if the changes ensure data freshness.
+1.  **Fix API Persistence**: Completed.
+2.  **Fix Frontend Sync**: Completed.
 
 ## Project Status Board
 
@@ -32,6 +24,14 @@ Also, the user reported that refreshing the app triggers the World ID sign-in mo
 - [x] Update `app/page.tsx` to disable caching for submissions fetch.
 - [x] Update `app/api/submissions/route.ts` to force dynamic rendering.
 - [x] Implement session persistence in `components/minikit-provider.tsx`.
+- [x] Replace mock leaderboard data with real DB data in `app/page.tsx`.
+- [x] Fix `PGRST116` error in `app/api/user/status/route.ts`.
+- [x] Implement hybrid/fallback mock data for leaderboard in `app/page.tsx`.
+- [x] Fix World ID verification error in `components/human-verification-modal.tsx`.
+- [x] Fix "Already Submitted" state not updating after submission.
+- [x] Fix "Anonymous" usernames (added sync logic + local fallback).
+- [x] Fix current user ranking card image in leaderboard.
+- [x] Fix username and PFP persistence in API.
 
 ## Executor's Feedback or Assistance Requests
 
@@ -39,5 +39,4 @@ Also, the user reported that refreshing the app triggers the World ID sign-in mo
 
 ## Lessons
 
-- Always check if an SDK method triggers a UI element (like a modal) before calling it automatically on mount.
-- Next.js `fetch` caching can be aggressive; use `no-store` for real-time-like data.
+- Ensure API DTOs match the frontend payload fully.
