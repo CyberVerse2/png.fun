@@ -2,9 +2,9 @@
 
 import type * as React from "react"
 import { cn } from "@/lib/utils"
-import { motion } from "framer-motion"
+import { motion, HTMLMotionProps } from "framer-motion"
 
-interface NeoButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
+interface NeoButtonProps extends Omit<HTMLMotionProps<"button">, 'ref'> {
   variant?: "primary" | "secondary" | "ghost"
   size?: "sm" | "md" | "lg" | "icon"
 }
@@ -12,8 +12,6 @@ interface NeoButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
 export function NeoButton({ className, variant = "secondary", size = "md", children, ...props }: NeoButtonProps) {
   return (
     <motion.button
-      whileHover={{ scale: 1.02 }}
-      whileTap={{ scale: 0.95 }}
       className={cn(
         "neo-border neo-shadow rounded-lg font-black uppercase transition-colors active:neo-pressed disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center",
         {
@@ -27,7 +25,7 @@ export function NeoButton({ className, variant = "secondary", size = "md", child
         },
         className,
       )}
-      {...(props as any)} // Cast to any to avoid strict motion types conflict with HTML props
+      {...props}
     >
       {children}
     </motion.button>

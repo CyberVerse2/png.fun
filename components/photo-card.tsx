@@ -29,7 +29,7 @@ export function PhotoCard({
 }: PhotoCardProps) {
   return (
     <div className={cn("neo-card overflow-hidden", className)} style={style}>
-      <div className="relative aspect-[3/4] bg-muted">
+      <div className="relative aspect-1/1 bg-muted">
         <img src={imageUrl || "/placeholder.svg"} alt={`Photo by ${username}`} className="w-full h-full object-cover" />
 
         <div className="absolute top-4 right-4 flex flex-col gap-2 items-end">

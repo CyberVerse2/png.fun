@@ -251,7 +251,7 @@ export default function Home() {
   return (
     <>
       <TopBar onProfileClick={() => setShowProfile(true)} />
-      <div className="pt-16 pb-20 min-h-screen flex flex-col overflow-hidden">
+      <div className="pt-16 pb-20 min-h-screen flex flex-col" style={{ overflowX: 'clip' }}>
         <AnimatePresence mode="wait">
           {showProfile ? (
             <motion.div
@@ -271,17 +271,21 @@ export default function Home() {
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: 20 }}
               transition={{ duration: 0.2 }}
-              className="flex flex-col flex-1 px-4 py-4"
+              className="flex flex-col flex-1 px-4 py-4 relative"
             >
-              <ChallengeHeader
-                title="Capture Your Best Sunset"
-                timeRemaining="8h 42m"
-                submissionCount={2453}
-                prizePool="500 WLD"
-                isExpanded={isExpanded}
-                onToggle={() => setIsExpanded(!isExpanded)}
-              />
-              <VoteStack photos={mockPhotos} onVote={handleVote} />
+              <div className="relative z-10">
+                <ChallengeHeader
+                  title="Capture Your Best Sunset"
+                  timeRemaining="8h 42m"
+                  submissionCount={2453}
+                  prizePool="500 WLD"
+                  isExpanded={isExpanded}
+                  onToggle={() => setIsExpanded(!isExpanded)}
+                />
+              </div>
+              <div className="relative z-50 flex-1 flex flex-col">
+                <VoteStack photos={mockPhotos} onVote={handleVote} />
+              </div>
             </motion.div>
           ) : (
             <motion.div
