@@ -2,9 +2,9 @@
 
 import { Drawer, DrawerContent, DrawerFooter, DrawerHeader, DrawerTitle } from "@/components/ui/drawer"
 import { NeoButton } from "@/components/neo-button"
-import { ScanFace } from "lucide-react"
+import { ScanFace, Camera } from "lucide-react"
 import { MiniKit, VerificationLevel, ISuccessResult } from "@worldcoin/minikit-js"
-import { useState, useCallback } from "react"
+import { useState, useCallback, useRef } from "react"
 
 interface HumanVerificationModalProps {
   isOpen: boolean
@@ -14,12 +14,14 @@ interface HumanVerificationModalProps {
 
 export function HumanVerificationModal({ isOpen, onOpenChange, onVerify }: HumanVerificationModalProps) {
   const [loading, setLoading] = useState(false)
+  const [verified, setVerified] = useState(false)
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   const handleVerify = useCallback(async () => {
     if (!MiniKit.isInstalled()) {
       console.warn("MiniKit not installed, falling back to mock verification for browser testing")
-      // For browser testing without MiniKit - open camera directly
-      openCamera()
+      // For browser testing without MiniKit - show camera button
+      setVerified(true)
       return
     }
 
@@ -49,9 +51,9 @@ export function HumanVerificationModal({ isOpen, onOpenChange, onVerify }: Human
         
         // Check if backend verification succeeded
         if (verifyData.status === 200 || verifyData.verifyRes?.success) {
-          console.log("Backend verification successful! Opening camera...")
-          // Verification successful - now open camera
-          openCamera()
+          console.log("Backend verification successful! Showing camera button...")
+          // Verification successful - show camera button
+          setVerified(true)
         } else {
           console.error("Verification failed backend check:", verifyData)
         }
@@ -63,35 +65,26 @@ export function HumanVerificationModal({ isOpen, onOpenChange, onVerify }: Human
     } finally {
       setLoading(false)
     }
-  }, [onVerify])
+  }, [])
 
-  const openCamera = () => {
-    // Close the modal first`
-    onOpenChange(false)
-    
-    // Wait a bit for modal to close, then open camera
-    setTimeout(() => {
-      // Create a file input element to access camera
-      const input = document.createElement('input')
-      input.type = 'file'
-      input.accept = 'image/*'
-      input.capture = 'environment' // Use rear camera
-      
-      input.onchange = (e) => {
-        const file = (e.target as HTMLInputElement).files?.[0]
-        if (file) {
-          const reader = new FileReader()
-          reader.onload = (event) => {
-            const imageUrl = event.target?.result as string
-            // Call onVerify with the captured image
-            onVerify(imageUrl)
-          }
-          reader.readAsDataURL(file)
-        }
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (file) {
+      console.log("Reading file:", file.name)
+      const reader = new FileReader()
+      reader.onload = (event) => {
+        const imageUrl = event.target?.result as string
+        console.log("Image loaded, calling onVerify with photo")
+        onOpenChange(false)
+        setVerified(false)
+        onVerify(imageUrl)
       }
-      
-      input.click()
-    }, 300) // 300ms delay to allow modal to close
+      reader.readAsDataURL(file)
+    }
+  }
+
+  const handleCameraClick = () => {
+    fileInputRef.current?.click()
   }
 
   return (
@@ -99,18 +92,43 @@ export function HumanVerificationModal({ isOpen, onOpenChange, onVerify }: Human
       <DrawerContent>
         <DrawerHeader className="text-center pt-8 pb-4">
           <div className="mx-auto bg-muted h-20 w-20 rounded-full flex items-center justify-center mb-4">
-            <ScanFace className="h-10 w-10 text-muted-foreground" />
+            {verified ? (
+              <Camera className="h-10 w-10 text-muted-foreground" />
+            ) : (
+              <ScanFace className="h-10 w-10 text-muted-foreground" />
+            )}
           </div>
-          <DrawerTitle className="text-2xl font-black uppercase">Human Verification</DrawerTitle>
+          <DrawerTitle className="text-2xl font-black uppercase">
+            {verified ? "Take Photo" : "Human Verification"}
+          </DrawerTitle>
           <p className="text-muted-foreground text-sm mt-2 max-w-xs mx-auto">
-            Please verify your World ID to capture and submit your daily challenge photo.
+            {verified 
+              ? "Tap the button below to open your camera and capture your photo."
+              : "Please verify your World ID to capture and submit your daily challenge photo."}
           </p>
         </DrawerHeader>
         <DrawerFooter className="pb-8 px-4">
-          <NeoButton variant="primary" size="lg" onClick={handleVerify} className="w-full" disabled={loading}>
-            <ScanFace className="mr-2 h-5 w-5" />
-            {loading ? "Verifying..." : "Verify World ID"}
-          </NeoButton>
+          {verified ? (
+            <>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                capture="environment"
+                onChange={handleFileChange}
+                style={{ display: 'none' }}
+              />
+              <NeoButton variant="primary" size="lg" onClick={handleCameraClick} className="w-full">
+                <Camera className="mr-2 h-5 w-5" />
+                Open Camera
+              </NeoButton>
+            </>
+          ) : (
+            <NeoButton variant="primary" size="lg" onClick={handleVerify} className="w-full" disabled={loading}>
+              <ScanFace className="mr-2 h-5 w-5" />
+              {loading ? "Verifying..." : "Verify World ID"}
+            </NeoButton>
+          )}
         </DrawerFooter>
       </DrawerContent>
     </Drawer>
