@@ -191,24 +191,23 @@ export default function Home() {
   // Get authenticated user
   const user = useUser();
 
-  // Simple onboarding check - show if not authenticated
-  useEffect(() => {
-    if (user.isLoading) return;
+  // Don't show onboarding immediately - wait for DB check
+  // This useEffect is now handled by the fetchUserData effect below
 
-    // If not authenticated, show onboarding (which will trigger sign-in)
-    if (!user.isAuthenticated) {
-      setShowOnboarding(true);
-    }
-
-    setCheckingOnboarding(false);
-  }, [user.isLoading, user.isAuthenticated]);
-
-  // Fetch user ID and verification status from database when wallet address is available
+  // Fetch user ID and verification status from database after authentication attempt
   useEffect(() => {
     const fetchUserData = async () => {
+      console.log('[Frontend] Checking user data...', {
+        isLoading: user.isLoading,
+        isAuthenticated: user.isAuthenticated,
+        walletAddress: user.walletAddress
+      });
+
+      // Wait for auth attempt to complete
       if (user.isLoading) return;
 
       if (user.isAuthenticated && user.walletAddress && supabase) {
+        console.log('[Frontend] User authenticated, fetching from database...');
         const { data, error } = await supabase
           .from('users')
           .select(
@@ -218,8 +217,14 @@ export default function Home() {
           .single();
 
         if (error) {
+          console.log('[Frontend] Error fetching user data, showing onboarding:', error);
           setShowOnboarding(true);
         } else if (data) {
+          console.log('[Frontend] User data fetched:', {
+            userId: data.id,
+            onboardingCompleted: data.onboarding_completed
+          });
+
           setUserId(data.id);
           setIsWorldIdVerified(data.world_id_verified || false);
 
@@ -229,8 +234,9 @@ export default function Home() {
             wins: data.total_wins || 0
           });
 
-          // Check onboarding status from DB
+          // Check onboarding status from DB - this is the source of truth
           if (data.onboarding_completed) {
+            console.log('[Frontend] Onboarding already completed, hiding onboarding screen');
             setShowOnboarding(false);
 
             // Check if notifications need to be enabled
@@ -256,6 +262,7 @@ export default function Home() {
               } catch (e) {}
             }
           } else {
+            console.log('[Frontend] Onboarding not completed, showing onboarding screen');
             setShowOnboarding(true);
           }
 
@@ -281,6 +288,7 @@ export default function Home() {
           // DB is the source of truth for notifications_enabled
         }
       } else if (!user.isAuthenticated) {
+        console.log('[Frontend] User not authenticated, showing onboarding for sign-in');
         setShowOnboarding(true);
       }
 
