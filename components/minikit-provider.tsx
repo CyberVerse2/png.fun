@@ -28,6 +28,18 @@ export default function MiniKitProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     MiniKit.install("app_a9e1e8a3c65d60bcf0432ec93883b524")
+
+    // Automatically authenticate on app load (silent, non-blocking)
+    const initAuth = async () => {
+      // Wait a bit for MiniKit to be ready
+      await new Promise(resolve => setTimeout(resolve, 500))
+      
+      if (MiniKit.isInstalled()) {
+        await authenticate()
+      }
+    }
+
+    initAuth()
   }, [])
 
   const authenticate = async (): Promise<boolean> => {

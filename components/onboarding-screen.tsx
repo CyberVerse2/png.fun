@@ -3,11 +3,10 @@
 import * as React from "react"
 import { NeoButton } from "./neo-button"
 import { NeoCard } from "./neo-card"
-import { Camera, ThumbsUp, Trophy, Bell, Users } from "lucide-react"
+import { Camera, Trophy, Users } from "lucide-react"
 import { motion, AnimatePresence } from "framer-motion"
-import { MiniKit, Permission } from "@worldcoin/minikit-js"
 import { SuccessScreen } from "./success-screen"
-import { useAuth } from "./minikit-provider"
+import { MiniKit, Permission } from "@worldcoin/minikit-js"
 
 interface OnboardingScreenProps {
   onComplete: () => void
@@ -16,7 +15,6 @@ interface OnboardingScreenProps {
 export function OnboardingScreen({ onComplete }: OnboardingScreenProps) {
   const [step, setStep] = React.useState(0)
   const [showSuccess, setShowSuccess] = React.useState(false)
-  const authenticate = useAuth()
 
   const steps = [
     {
@@ -48,54 +46,28 @@ export function OnboardingScreen({ onComplete }: OnboardingScreenProps) {
     },
   ]
 
-  const handleNotifications = async () => {
-    // First authenticate with World ID
-    const authSuccess = await authenticate()
-    
-    if (!authSuccess) {
-      console.warn("Authentication failed or skipped")
-      // Still proceed even if auth fails
-    }
-
-    // Then request notification permissions
-    if (!MiniKit.isInstalled()) {
-      console.warn("MiniKit not installed, skipping notification request")
-      setShowSuccess(true)
-      return
-    }
-
-    try {
-      const { finalPayload } = await MiniKit.commandsAsync.requestPermission({
-        permission: Permission.Notifications,
-      })
-
-      console.log("Permission response:", finalPayload)
-      
-      // The finalPayload for requestPermission has status directly
-      if (finalPayload.status === "success") {
-        console.log("Notifications enabled successfully")
-        setShowSuccess(true)
-      } else if (finalPayload.status === "error") {
-        console.error("Permission request error:", finalPayload)
-        // Still show success to not block the user
-        setShowSuccess(true)
-      } else {
-        // Unexpected status, but proceed anyway
-        console.warn("Unexpected permission response:", finalPayload)
-        setShowSuccess(true)
+  const handleGetStarted = async () => {
+    // Request notification permissions
+    if (MiniKit.isInstalled()) {
+      try {
+        await MiniKit.commandsAsync.requestPermission({
+          permission: Permission.Notifications,
+        })
+      } catch (error) {
+        console.log("Notification permission request:", error)
       }
-    } catch (error) {
-      console.error("Notification request error:", error)
-      setShowSuccess(true)
     }
+    
+    // Complete onboarding regardless of permission outcome
+    onComplete()
   }
 
   const handleNext = () => {
     if (step < steps.length - 1) {
       setStep(step + 1)
     } else {
-      // Instead of just completing, trigger notifications
-      handleNotifications()
+      // Last step - complete onboarding
+      handleGetStarted()
     }
   }
 
