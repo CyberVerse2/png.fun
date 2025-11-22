@@ -180,6 +180,20 @@ const mockProfile = {
   ],
 }
 
+// Helper function to calculate time remaining
+function calculateTimeRemaining(endTime: string): string {
+  const now = new Date()
+  const end = new Date(endTime)
+  const diff = end.getTime() - now.getTime()
+
+  if (diff <= 0) return "Ended"
+
+  const hours = Math.floor(diff / (1000 * 60 * 60))
+  const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60))
+
+  return `${hours}h ${minutes}m`
+}
+
 export default function Home() {
   const [showOnboarding, setShowOnboarding] = React.useState(true)
   const [showOnboardingSuccess, setShowOnboardingSuccess] = React.useState(false)
@@ -192,7 +206,102 @@ export default function Home() {
   const [showSuccess, setShowSuccess] = React.useState(false)
   const [capturedPhotoUrl, setCapturedPhotoUrl] = React.useState<string | null>(null)
 
-  const handleVote = (photoId: string, vote: "up" | "down") => {}
+  // Supabase data state
+  const [challenge, setChallenge] = React.useState<any>(null)
+  const [submissions, setSubmissions] = React.useState<any[]>([])
+  const [leaderboardData, setLeaderboardData] = React.useState<any[]>([])
+  const [loading, setLoading] = React.useState(true)
+  const [userId, setUserId] = React.useState<string | null>(null)
+
+  // Fetch active challenge
+  const fetchChallenge = async () => {
+    try {
+      const res = await fetch('/api/challenges')
+      const data = await res.json()
+      if (data.challenge) {
+        setChallenge(data.challenge)
+        // Fetch submissions for this challenge
+        fetchSubmissions(data.challenge.id)
+      }
+    } catch (error) {
+      console.error('Error fetching challenge:', error)
+    }
+  }
+
+  // Fetch submissions for voting
+  const fetchSubmissions = async (challengeId: string) => {
+    try {
+      const res = await fetch(`/api/submissions?challengeId=${challengeId}`)
+      const data = await res.json()
+      if (data.submissions) {
+        // Transform to match expected format
+        const transformed = data.submissions.map((sub: any) => ({
+          id: sub.id,
+          imageUrl: sub.photo_url,
+          username: sub.user?.username || 'Anonymous',
+          avatarUrl: sub.user?.profile_picture_url || '/placeholder.svg',
+          rank: sub.rank,
+          wld: sub.total_wld_voted,
+          potentialWld: sub.total_wld_voted * 2,
+        }))
+        setSubmissions(transformed)
+      }
+    } catch (error) {
+      console.error('Error fetching submissions:', error)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  // Fetch leaderboard
+  const fetchLeaderboard = async () => {
+    try {
+      const res = await fetch('/api/leaderboard?limit=10')
+      const data = await res.json()
+      if (data.leaderboard) {
+        const transformed = data.leaderboard.map((user: any, index: number) => ({
+          rank: index + 1,
+          username: user.username || 'Anonymous',
+          avatarUrl: user.profile_picture_url || '/placeholder.svg',
+          wld: user.total_wld_earned,
+          wins: user.total_wins,
+          imageUrl: '/placeholder.svg',
+        }))
+        setLeaderboardData(transformed)
+      }
+    } catch (error) {
+      console.error('Error fetching leaderboard:', error)
+    }
+  }
+
+  // Load data on mount
+  useEffect(() => {
+    fetchChallenge()
+    fetchLeaderboard()
+  }, [])
+
+  const handleVote = async (photoId: string, vote: "up" | "down") => {
+    if (!userId) {
+      console.warn('No user ID available for voting')
+      return
+    }
+
+    // For now, we'll just log the vote
+    // In production, this would trigger a WLD payment transaction
+    console.log('Vote:', { photoId, vote, userId })
+
+    // TODO: Integrate with World ID Pay command for actual WLD transfer
+    // const wldAmount = 0.1 // Example amount
+    // await fetch('/api/votes', {
+    //   method: 'POST',
+    //   headers: { 'Content-Type': 'application/json' },
+    //   body: JSON.stringify({
+    //     submissionId: photoId,
+    //     voterId: userId,
+    //     wldAmount,
+    //   }),
+    // })
+  }
 
   const handleCameraClick = () => {
     setIsVerificationOpen(true)
@@ -275,16 +384,29 @@ export default function Home() {
             >
               <div className="relative z-10">
                 <ChallengeHeader
-                  title="Capture Your Best Sunset"
-                  timeRemaining="8h 42m"
-                  submissionCount={2453}
-                  prizePool="500 WLD"
+                  title={challenge?.title || "Loading..."}
+                  timeRemaining={challenge ? calculateTimeRemaining(challenge.end_time) : "..."}
+                  submissionCount={submissions.length}
+                  prizePool={challenge?.prize_pool ? `${challenge.prize_pool} WLD` : "..."}
                   isExpanded={isExpanded}
                   onToggle={() => setIsExpanded(!isExpanded)}
                 />
               </div>
               <div className="relative z-50 flex-1 flex flex-col">
-                <VoteStack photos={mockPhotos} onVote={handleVote} />
+                {loading ? (
+                  <div className="flex-1 flex items-center justify-center">
+                    <p className="text-muted-foreground font-bold">Loading submissions...</p>
+                  </div>
+                ) : submissions.length > 0 ? (
+                  <VoteStack photos={submissions} onVote={handleVote} />
+                ) : (
+                  <div className="flex-1 flex items-center justify-center">
+                    <div className="text-center">
+                      <p className="text-2xl font-black mb-2">No submissions yet</p>
+                      <p className="text-muted-foreground">Be the first to submit!</p>
+                    </div>
+                  </div>
+                )}
               </div>
             </motion.div>
           ) : (
@@ -296,7 +418,7 @@ export default function Home() {
               transition={{ duration: 0.2 }}
               className="flex-1 flex flex-col h-full"
             >
-              <LeaderboardScreen entries={mockLeaderboard} currentUserRank={15} />
+              <LeaderboardScreen entries={leaderboardData} currentUserRank={15} />
             </motion.div>
           )}
         </AnimatePresence>

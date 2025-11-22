@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { cookies } from "next/headers"
 import { MiniAppWalletAuthSuccessPayload, verifySiweMessage } from "@worldcoin/minikit-js"
+import { supabaseAdmin } from "@/lib/supabase"
 
 interface IRequestPayload {
   payload: MiniAppWalletAuthSuccessPayload
@@ -30,8 +31,32 @@ export async function POST(req: NextRequest) {
       const cookieStore = await cookies()
       cookieStore.delete("siwe")
       
-      // Here you would typically create a session for the user
-      // For now, we'll just return success
+      // Create or update user in Supabase
+      const { data: existingUser } = await supabaseAdmin
+        .from('users')
+        .select('*')
+        .eq('wallet_address', payload.address)
+        .single()
+
+      if (existingUser) {
+        // Update existing user
+        await supabaseAdmin
+          .from('users')
+          .update({
+            updated_at: new Date().toISOString(),
+          })
+          .eq('wallet_address', payload.address)
+      } else {
+        // Create new user
+        await supabaseAdmin
+          .from('users')
+          .insert({
+            wallet_address: payload.address,
+            username: null, // Will be populated from MiniKit
+            profile_picture_url: null,
+          })
+      }
+      
       return NextResponse.json({
         status: "success",
         isValid: true,
