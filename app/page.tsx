@@ -17,7 +17,7 @@ import { useEffect } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useSession } from 'next-auth/react';
 import { supabase } from '@/lib/supabase';
-import { MiniKit } from '@worldcoin/minikit-js';
+import { MiniKit, Tokens, tokenToDecimals } from '@worldcoin/minikit-js';
 
 // Mock data
 const mockPhotos = [
@@ -27,8 +27,8 @@ const mockPhotos = [
     username: 'SunsetChaser',
     avatarUrl: '/placeholder.svg?height=40&width=40',
     rank: 1,
-    wld: 450,
-    potentialWld: 1000
+    wld: 0,
+    potentialWld: 0
   },
   {
     id: '2',
@@ -36,8 +36,8 @@ const mockPhotos = [
     username: 'CityLights',
     avatarUrl: '/placeholder.svg?height=40&width=40',
     rank: 2,
-    wld: 380,
-    potentialWld: 800
+    wld: 0,
+    potentialWld: 0
   },
   {
     id: '3',
@@ -45,8 +45,8 @@ const mockPhotos = [
     username: 'CaffeineKing',
     avatarUrl: '/placeholder.svg?height=40&width=40',
     rank: 5,
-    wld: 210,
-    potentialWld: 500
+    wld: 0,
+    potentialWld: 0
   },
   {
     id: '4',
@@ -54,8 +54,8 @@ const mockPhotos = [
     username: 'PeakSeeker',
     avatarUrl: '/placeholder.svg?height=40&width=40',
     rank: 3,
-    wld: 340,
-    potentialWld: 750
+    wld: 0,
+    potentialWld: 0
   },
   {
     id: '5',
@@ -63,8 +63,8 @@ const mockPhotos = [
     username: 'UrbanArtist',
     avatarUrl: '/placeholder.svg?height=40&width=40',
     rank: 8,
-    wld: 150,
-    potentialWld: 300
+    wld: 0,
+    potentialWld: 0
   }
 ];
 
@@ -72,70 +72,70 @@ const mockLeaderboard = [
   {
     username: 'PhotoPro',
     avatarUrl: '/placeholder.svg?height=40&width=40',
-    wld: 12450,
+    wld: 0,
     wins: 24,
     imageUrl: '/winning-photo.jpg'
   },
   {
     username: 'SnapMaster',
     avatarUrl: '/placeholder.svg?height=40&width=40',
-    wld: 11200,
+    wld: 0,
     wins: 19,
     imageUrl: '/second-place-photo.jpg'
   },
   {
     username: 'LensLegend',
     avatarUrl: '/placeholder.svg?height=40&width=40',
-    wld: 10800,
+    wld: 0,
     wins: 17,
     imageUrl: '/third-place-photo.jpg'
   },
   {
     username: 'ShutterBug',
     avatarUrl: '/placeholder.svg?height=40&width=40',
-    wld: 9500,
+    wld: 0,
     wins: 15,
     imageUrl: '/placeholder.svg?height=400&width=600'
   },
   {
     username: 'PixelPerfect',
     avatarUrl: '/placeholder.svg?height=40&width=40',
-    wld: 8900,
+    wld: 0,
     wins: 12,
     imageUrl: '/placeholder.svg?height=400&width=600'
   },
   {
     username: 'FocusFanatic',
     avatarUrl: '/placeholder.svg?height=40&width=40',
-    wld: 8200,
+    wld: 1,
     wins: 10,
     imageUrl: '/placeholder.svg?height=400&width=600'
   },
   {
     username: 'ApertureAce',
     avatarUrl: '/placeholder.svg?height=40&width=40',
-    wld: 7500,
+    wld: 0,
     wins: 8,
     imageUrl: '/placeholder.svg?height=400&width=600'
   },
   {
     username: 'ISOIdol',
     avatarUrl: '/placeholder.svg?height=40&width=40',
-    wld: 6800,
+    wld: 0,
     wins: 7,
     imageUrl: '/placeholder.svg?height=400&width=600'
   },
   {
     username: 'CameraKing',
     avatarUrl: '/placeholder.svg?height=40&width=40',
-    wld: 6200,
+    wld: 0,
     wins: 5,
     imageUrl: '/placeholder.svg?height=400&width=600'
   },
   {
     username: 'ViewFinder',
     avatarUrl: '/placeholder.svg?height=40&width=40',
-    wld: 5900,
+    wld: 0,
     wins: 4,
     imageUrl: '/placeholder.svg?height=400&width=600'
   }
@@ -144,8 +144,8 @@ const mockLeaderboard = [
 // Mock profile data removed - now using real data from database
 
 // Helper function to calculate time remaining
-function calculateTimeRemaining(endTime: string): string {
-  const now = new Date();
+function calculateTimeRemaining(endTime: string, currentTime?: Date): string {
+  const now = currentTime || new Date();
   const end = new Date(endTime);
   const diff = end.getTime() - now.getTime();
 
@@ -153,8 +153,14 @@ function calculateTimeRemaining(endTime: string): string {
 
   const hours = Math.floor(diff / (1000 * 60 * 60));
   const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+  const seconds = Math.floor((diff % (1000 * 60)) / 1000);
 
-  return `${hours}h ${minutes}m`;
+  // Format with leading zeros for consistency
+  const formattedHours = String(hours).padStart(2, '0');
+  const formattedMinutes = String(minutes).padStart(2, '0');
+  const formattedSeconds = String(seconds).padStart(2, '0');
+
+  return `${formattedHours}h ${formattedMinutes}m ${formattedSeconds}s`;
 }
 
 export default function Home() {
@@ -188,6 +194,7 @@ export default function Home() {
   const [votedSubmissionIds, setVotedSubmissionIds] = React.useState<Set<string>>(new Set());
   const [votesLoaded, setVotesLoaded] = React.useState(false);
   const [votingInProgress, setVotingInProgress] = React.useState(false);
+  const [currentTime, setCurrentTime] = React.useState(new Date());
 
   const [checkingOnboarding, setCheckingOnboarding] = React.useState(true);
 
@@ -246,26 +253,8 @@ export default function Home() {
             setShowOnboarding(false);
 
             // Check if notifications need to be enabled
-            if (!data.notifications_enabled && MiniKit.isInstalled()) {
-              try {
-                const { finalPayload } = await MiniKit.commandsAsync.getPermissions();
-                if (finalPayload.status === 'success') {
-                  const hasNotifications = finalPayload.permissions.notifications;
-                  if (!hasNotifications) {
-                    setShowNotificationPrompt(true);
-                  } else {
-                    // Auto-sync if already granted
-                    await fetch('/api/user/status', {
-                      method: 'POST',
-                      headers: { 'Content-Type': 'application/json' },
-                      body: JSON.stringify({
-                        walletAddress: walletAddress,
-                        notificationsEnabled: true
-                      })
-                    });
-                  }
-                }
-              } catch (e) {}
+            if (!data.notifications_enabled) {
+              setShowNotificationPrompt(true);
             }
           } else {
             console.log('[Frontend] Onboarding not completed, showing onboarding screen');
@@ -688,6 +677,15 @@ export default function Home() {
     }
   }, [challenge?.id, votesLoaded]);
 
+  // Update timer every second for live countdown
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentTime(new Date());
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, []);
+
   // Show loading screen while checking user/onboarding
   if (isLoading || checkingOnboarding) {
     return (
@@ -720,105 +718,75 @@ export default function Home() {
     if (vote === 'up') {
       try {
         setVotingInProgress(true);
-        console.log('[Frontend] Processing vote payment via MiniKit...');
+        console.log('[Frontend] Processing vote payment...');
         
-        // Generate unique payment reference (max 36 chars for MiniKit)
-        const timestamp = Date.now().toString().slice(-8); // Last 8 digits of timestamp
-        const randomId = Math.random().toString(36).substr(2, 6); // 6 char random string
-        const shortPhotoId = photoId.slice(-8); // Last 8 chars of photo ID
-        const paymentRef = `v_${shortPhotoId}_${timestamp}_${randomId}`.substring(0, 36); // Ensure max 36 chars
-        
-        // Use MiniKit Pay to send WLD to contract
-        const { MiniKit, Tokens, tokenToDecimals } = await import('@worldcoin/minikit-js');
-        
-        const voteAmount = 0.01; // 0.01 WLD per vote (adjust as needed)
+        // Send payment to PNG.FUN contract (exact same logic as Pay component)
         const contractAddress = process.env.NEXT_PUBLIC_PNG_FUN_CONTRACT_ADDRESS || '0xF29d3AEaf0cCD69F909FD999AebA1033C6859eAF';
-        
-        if (!contractAddress) {
-          throw new Error('Contract address not configured');
-        }
-        
-        console.log('[Frontend] Initiating payment:', {
-          reference: paymentRef,
-          referenceLength: paymentRef.length,
-          to: contractAddress,
-          amount: voteAmount,
-          description: `Vote for submission #${photoId}`
-        });
-        
-        const paymentResult = await MiniKit.commandsAsync.pay({
-          reference: paymentRef,
-          to: contractAddress,
-          tokens: [{
-            symbol: Tokens.WLD,
-            token_amount: tokenToDecimals(voteAmount, Tokens.WLD).toString(),
-          }],
-          description: `Vote for submission #${photoId} with ${voteAmount} WLD`,
-        });
-        
-        console.log('[Frontend] Payment result:', paymentResult.finalPayload);
-        
-        if (paymentResult.finalPayload.status !== 'success') {
-          throw new Error(`Payment failed: ${paymentResult.finalPayload.status}`);
-        }
-        
-        console.log('[Frontend] Payment successful, creating vote record...');
-        
-        // Create vote record in database
-        const response = await fetch('/api/votes', {
+
+        const res = await fetch('/api/initiate-payment', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            submissionId: photoId,
-            voterId: userId,
-            wldAmount: voteAmount,
-            paymentReference: paymentRef,
-            transactionId: paymentResult.finalPayload.transaction_id || 'minikit_pay'
-          })
+        });
+        const { id } = await res.json();
+
+        const result = await MiniKit.commandsAsync.pay({
+          reference: id,
+          to: contractAddress,
+          tokens: [
+            {
+              symbol: Tokens.WLD,
+              token_amount: tokenToDecimals(0.1, Tokens.WLD).toString(),
+            },
+          ],
+          description: 'Vote Payment to PNG.FUN Challenge Contract',
         });
 
-        const data = await response.json();
+        console.log(result.finalPayload);
+        if (result.finalPayload.status === 'success') {
+          console.log('[Frontend] Payment successful, creating vote record...');
+          
+          // Create vote record in database after successful payment
+          const response = await fetch('/api/votes', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              submissionId: photoId,
+              voterId: userId,
+              wldAmount: 0.1, // Amount that was paid
+            })
+          });
 
-        if (!response.ok) {
-          if (response.status === 409) {
-            console.warn('[Frontend] Already voted on this submission');
-          } else {
-            console.error('[Frontend] Error creating vote:', data.error);
+          const data = await response.json();
+
+          if (!response.ok) {
+            if (response.status === 409) {
+              console.warn('[Frontend] Already voted on this submission');
+            } else {
+              console.error('[Frontend] Error creating vote:', data.error);
+            }
+            return;
           }
+
+          console.log('[Frontend] Vote created successfully:', data.vote);
+
+          // Add voted submission to the set so it won't appear again
+          setVotedSubmissionIds((prev) => new Set([...prev, photoId]));
+
+          // Refresh leaderboard to show updated rankings
+          console.log('[Frontend] Refreshing leaderboard after vote...');
+          await fetchLeaderboard();
+
+          // Refresh submissions to show updated vote counts (and filter out voted submission)
+          if (challenge?.id) {
+            await fetchSubmissions(challenge.id);
+          }
+        } else {
+          console.error('[Frontend] Payment failed:', result.finalPayload.status);
+          alert('Payment failed. Please try again.');
           return;
-        }
-
-        console.log('[Frontend] Vote created successfully:', data.vote);
-
-        // Add voted submission to the set so it won't appear again
-        setVotedSubmissionIds((prev) => new Set([...prev, photoId]));
-
-        // Refresh leaderboard to show updated rankings
-        console.log('[Frontend] Refreshing leaderboard after vote...');
-        await fetchLeaderboard();
-
-        // Refresh submissions to show updated vote counts (and filter out voted submission)
-        if (challenge?.id) {
-          await fetchSubmissions(challenge.id);
         }
       } catch (error) {
         console.error('[Frontend] Vote payment failed:', error);
-        
-        // Show user-friendly error message
-        if (error instanceof Error) {
-          if (error.message.includes('Payment failed')) {
-            alert('Payment failed. Please check your WLD balance and try again.');
-          } else if (error.message.includes('rejected')) {
-            alert('Payment was rejected. Please try again.');
-          } else {
-            alert('Vote failed. Please try again.');
-          }
-        } else {
-          alert('Vote failed. Please try again.');
-        }
-        
-        // Don't mark as voted if payment failed
-        return;
+        alert('Vote payment failed. Please try again.');
       } finally {
         setVotingInProgress(false);
       }
@@ -939,8 +907,8 @@ export default function Home() {
             walletAddress: walletAddress,
             onboardingCompleted: true,
             notificationsEnabled: notificationsEnabled,
-            username: session?.user?.username || MiniKit.user?.username,
-            profilePictureUrl: session?.user?.profilePictureUrl || MiniKit.user?.profilePictureUrl
+            username: session?.user?.username,
+            profilePictureUrl: session?.user?.profilePictureUrl
           })
         });
 
@@ -1044,7 +1012,7 @@ export default function Home() {
                 <ChallengeHeader
                   title={challenge?.title || 'Loading...'}
                   description={challenge?.description}
-                  timeRemaining={challenge ? calculateTimeRemaining(challenge.end_time) : '...'}
+                  timeRemaining={challenge ? calculateTimeRemaining(challenge.end_time, currentTime) : '...'}
                   submissionCount={submissions.length}
                   prizePool={challenge?.prize_pool ? `${challenge.prize_pool} WLD` : '...'}
                   isExpanded={isExpanded}
