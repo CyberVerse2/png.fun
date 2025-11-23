@@ -879,13 +879,19 @@ export default function Home() {
 
         console.log('[Frontend] DB updated successfully with username/PFP');
         setShowOnboarding(false);
+
+        // Reload page to refresh all user data
+        window.location.reload();
       } catch (error) {
         console.error('[Frontend] Error updating DB:', error);
         // Don't hide onboarding on error
       }
     } else {
-      // No wallet address, should not happen but handle gracefully
-      console.error('[Frontend] No wallet address available');
+      // No wallet address available yet - session might not be loaded
+      // This should not happen since onboarding-screen now reloads if session is missing
+      console.error('[Frontend] No wallet address available, session may not be loaded yet');
+      console.log('[Frontend] Reloading page to refresh session...');
+      window.location.reload();
     }
   };
 

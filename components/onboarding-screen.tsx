@@ -20,6 +20,7 @@ export function OnboardingScreen({ onComplete }: OnboardingScreenProps) {
   const [showSuccess, setShowSuccess] = React.useState(false);
   const [showNotifications, setShowNotifications] = React.useState(false);
   const [notificationsEnabled, setNotificationsEnabled] = React.useState(false);
+  const [isConnecting, setIsConnecting] = React.useState(false);
   const { data: session, status } = useSession();
   const isAuthenticated = status === 'authenticated';
 
@@ -69,12 +70,22 @@ export function OnboardingScreen({ onComplete }: OnboardingScreenProps) {
     // 1. Authenticate if needed
     if (!isAuthenticated) {
       console.log('[Onboarding] User not authenticated, triggering login...');
+      setIsConnecting(true);
       try {
-        await walletAuth();
-        console.log('[Onboarding] Authentication completed');
+        const success = await walletAuth();
+        console.log('[Onboarding] Authentication result:', success);
+
+        if (!success) {
+          console.log('[Onboarding] Authentication failed or cancelled');
+          setIsConnecting(false);
+          return;
+        }
       } catch (error) {
-        console.log('[Onboarding] Authentication failed or cancelled:', error);
+        console.log('[Onboarding] Authentication error:', error);
+        setIsConnecting(false);
         return;
+      } finally {
+        setIsConnecting(false);
       }
     } else {
       console.log('[Onboarding] User already authenticated, proceeding...');
@@ -96,24 +107,7 @@ export function OnboardingScreen({ onComplete }: OnboardingScreenProps) {
     setShowNotifications(false);
     setNotificationsEnabled(enabled);
 
-    // Update DB with notification status
-    if (session?.user?.walletAddress) {
-      try {
-        await fetch('/api/user/status', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            walletAddress: session.user.walletAddress,
-            notificationsEnabled: enabled
-          })
-        });
-        console.log('[Onboarding] DB updated with notification status');
-      } catch (error) {
-        console.error('[Onboarding] Error updating notification status:', error);
-      }
-    }
-
-    // Complete onboarding
+    // Complete onboarding - parent will handle DB update with session data
     onComplete(enabled);
   };
 
@@ -216,8 +210,16 @@ export function OnboardingScreen({ onComplete }: OnboardingScreenProps) {
 
           {/* Action Button */}
           <motion.div whileTap={{ scale: 0.98 }}>
-            <NeoButton variant="primary" size="lg" onClick={handleNext} className="w-full">
-              {step < steps.length - 1
+            <NeoButton
+              variant="primary"
+              size="lg"
+              onClick={handleNext}
+              className="w-full"
+              disabled={isConnecting}
+            >
+              {isConnecting
+                ? 'Connecting...'
+                : step < steps.length - 1
                 ? 'Next'
                 : isAuthenticated
                 ? 'Get Started'
@@ -232,14 +234,24 @@ export function OnboardingScreen({ onComplete }: OnboardingScreenProps) {
               animate={{ opacity: 1 }}
               whileHover={{ scale: 1.1, color: 'var(--foreground)' }}
               whileTap={{ scale: 0.95 }}
+              disabled={isConnecting}
               onClick={async () => {
                 // If not authenticated, authenticate first
                 if (!isAuthenticated) {
+                  setIsConnecting(true);
                   try {
-                    await walletAuth();
+                    const success = await walletAuth();
+                    if (!success) {
+                      alert('Please connect your wallet to continue');
+                      setIsConnecting(false);
+                      return;
+                    }
                   } catch (error) {
                     alert('Please connect your wallet to continue');
+                    setIsConnecting(false);
                     return;
+                  } finally {
+                    setIsConnecting(false);
                   }
                 }
                 // Skip to last step instead of bypassing the flow

@@ -12,12 +12,15 @@ export const walletAuth = async () => {
     statement: `Authenticate (${crypto.randomUUID().replace(/-/g, '')}).`
   });
 
-  if (result.finalPayload.status !== 'success') return;
+  if (result.finalPayload.status !== 'success') return false;
 
-  await signIn('credentials', {
-    redirectTo: '/home',
+  // Sign in without redirect - let onboarding flow continue
+  const response = await signIn('credentials', {
+    redirect: false,
     nonce,
     signedNonce,
     finalPayloadJson: JSON.stringify(result.finalPayload)
   });
+
+  return response?.ok || false;
 };
