@@ -18,7 +18,7 @@ export async function POST(req: NextRequest) {
       challengeId: challengeId,
       userId: userId,
       photoDataLength: photoDataLength
-    })
+    });
 
     if (!challengeId || !userId || !photoData) {
       console.log('Missing required fields:', {

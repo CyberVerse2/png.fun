@@ -1,57 +1,64 @@
-"use client"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { Badge } from "@/components/ui/badge"
-import { NeoCard } from "./neo-card"
-import { Trophy, Zap, Flame } from "lucide-react"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { useUser } from "./minikit-provider"
+'use client';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Badge } from '@/components/ui/badge';
+import { NeoCard } from './neo-card';
+import { Trophy, Zap, Flame } from 'lucide-react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { useSession } from 'next-auth/react';
 
 interface ProfileData {
-  username: string
-  avatarUrl: string
-  wld: number
-  wins: number
-  streak: number
-  totalWldEarned: number
+  username: string;
+  avatarUrl: string;
+  wld: number;
+  wins: number;
+  streak: number;
+  totalWldEarned: number;
   submissions: Array<{
-    id: string
-    imageUrl: string
-    challenge: string
-    votes: number
-    rank: number
-  }>
+    id: string;
+    imageUrl: string;
+    challenge: string;
+    votes: number;
+    rank: number;
+  }>;
   predictions: Array<{
-    id: string
-    challenge: string
-    status: "active" | "won" | "lost"
-    amount: number
-    imageUrl: string
+    id: string;
+    challenge: string;
+    status: 'active' | 'won' | 'lost';
+    amount: number;
+    imageUrl: string;
     photographer: {
-      username: string
-      avatarUrl: string
-    }
-  }>
+      username: string;
+      avatarUrl: string;
+    };
+  }>;
 }
 
 interface ProfileScreenProps {
-  data: ProfileData
+  data: ProfileData;
 }
 
 export function ProfileScreen({ data }: ProfileScreenProps) {
-  const user = useUser()
-  
+  const { data: session, status } = useSession();
+  const isAuthenticated = status === 'authenticated';
+
   // Use real user data if authenticated, otherwise fall back to mock data
-  const displayUsername = user.isAuthenticated && user.username ? user.username : data.username
-  const displayAvatar = user.isAuthenticated && user.profilePictureUrl ? user.profilePictureUrl : data.avatarUrl
-  const displayWalletAddress = user.walletAddress
-  
+  const displayUsername =
+    isAuthenticated && session?.user?.username ? session.user.username : data.username;
+  const displayAvatar =
+    isAuthenticated && session?.user?.profilePictureUrl
+      ? session.user.profilePictureUrl
+      : data.avatarUrl;
+  const displayWalletAddress = session?.user?.walletAddress || null;
+
   return (
     <div className="flex-1 overflow-y-auto px-6 pb-24 pt-6">
       {/* Profile Header */}
       <div className="text-center mb-6">
         <Avatar className="h-24 w-24 border-[5px] border-foreground mx-auto mb-4 neo-shadow">
-          <AvatarImage src={displayAvatar || "/placeholder.svg"} />
-          <AvatarFallback className="text-3xl font-black">{displayUsername[0].toUpperCase()}</AvatarFallback>
+          <AvatarImage src={displayAvatar || '/placeholder.svg'} />
+          <AvatarFallback className="text-3xl font-black">
+            {displayUsername[0].toUpperCase()}
+          </AvatarFallback>
         </Avatar>
         <h1 className="text-2xl font-black uppercase mb-2">{displayUsername}</h1>
         {displayWalletAddress && (
@@ -117,7 +124,7 @@ export function ProfileScreen({ data }: ProfileScreenProps) {
                 {/* Predicted Image */}
                 <div className="relative w-20 h-20 flex-shrink-0">
                   <img
-                    src={prediction.imageUrl || "/placeholder.svg"}
+                    src={prediction.imageUrl || '/placeholder.svg'}
                     alt="Predicted winner"
                     className="w-full h-full object-cover rounded-md border-2 border-black"
                   />
@@ -131,11 +138,11 @@ export function ProfileScreen({ data }: ProfileScreenProps) {
                       </div>
                       <Badge
                         className={`font-black uppercase text-[10px] h-5 ${
-                          prediction.status === "active"
-                            ? "bg-primary text-primary-foreground"
-                            : prediction.status === "won"
-                              ? "bg-green-600 text-white"
-                              : "bg-muted text-muted-foreground"
+                          prediction.status === 'active'
+                            ? 'bg-primary text-primary-foreground'
+                            : prediction.status === 'won'
+                            ? 'bg-green-600 text-white'
+                            : 'bg-muted text-muted-foreground'
                         } border border-foreground`}
                       >
                         {prediction.status}
@@ -145,10 +152,16 @@ export function ProfileScreen({ data }: ProfileScreenProps) {
                     {/* Photographer Info */}
                     <div className="flex items-center gap-1.5 mb-2">
                       <Avatar className="h-4 w-4 border border-foreground">
-                        <AvatarImage src={prediction.photographer.avatarUrl || "/placeholder.svg"} />
-                        <AvatarFallback className="text-[8px]">{prediction.photographer.username[0]}</AvatarFallback>
+                        <AvatarImage
+                          src={prediction.photographer.avatarUrl || '/placeholder.svg'}
+                        />
+                        <AvatarFallback className="text-[8px]">
+                          {prediction.photographer.username[0]}
+                        </AvatarFallback>
                       </Avatar>
-                      <span className="text-xs font-bold truncate">by {prediction.photographer.username}</span>
+                      <span className="text-xs font-bold truncate">
+                        by {prediction.photographer.username}
+                      </span>
                     </div>
                   </div>
 
@@ -170,13 +183,15 @@ export function ProfileScreen({ data }: ProfileScreenProps) {
             <NeoCard key={submission.id} className="overflow-hidden p-0">
               <div className="aspect-square bg-muted relative">
                 <img
-                  src={submission.imageUrl || "/placeholder.svg"}
+                  src={submission.imageUrl || '/placeholder.svg'}
                   alt={submission.challenge}
                   className="w-full h-full object-cover"
                 />
                 <div className="absolute bottom-0 left-0 right-0 bg-black/80 p-2">
                   <div className="text-white text-xs font-black">#{submission.rank}</div>
-                  <div className="text-white text-xs font-bold opacity-90">{submission.votes} votes</div>
+                  <div className="text-white text-xs font-bold opacity-90">
+                    {submission.votes} votes
+                  </div>
                 </div>
               </div>
             </NeoCard>
@@ -184,5 +199,5 @@ export function ProfileScreen({ data }: ProfileScreenProps) {
         </TabsContent>
       </Tabs>
     </div>
-  )
+  );
 }
