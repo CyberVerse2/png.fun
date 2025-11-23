@@ -70,3 +70,5 @@ export function hashPhoto(photoDataUrl: string): string {
   const bytes = ethers.toUtf8Bytes(base64Data);
   return ethers.keccak256(bytes);
 }
+export { CURRENT_NETWORK, PngFunChallengeABI };
+

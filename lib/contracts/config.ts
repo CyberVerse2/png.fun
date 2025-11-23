@@ -7,7 +7,7 @@ export const CONTRACTS = {
   },
   mainnet: {
     wld: '0x2cfc85d8e48f8eab294be644d9e25c3030863003',
-    pngFunChallenge: '', // Future mainnet deployment
+    pngFunChallenge: '0xF29d3AEaf0cCD69F909FD999AebA1033C6859eAF', // Mainnet deployment
     chainId: 480,
     rpcUrl: 'https://worldchain-mainnet.g.alchemy.com/public',
   }

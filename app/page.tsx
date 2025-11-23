@@ -678,35 +678,6 @@ export default function Home() {
     console.log('[Frontend] Vote action:', { photoId, vote, userId });
 
     // Only create a vote for "up" (swipe right/yes)
-    // "down" (swipe left) is just a skip, no vote created
-    if (vote === 'up') {
-      try {
-        console.log('[Frontend] Creating vote with 1 WLD...');
-        
-          // 1. Submit vote to blockchain
-          let txHash = '';
-          try {
-            console.log('[Frontend] Initiating blockchain vote...');
-            
-            // Find the submission to get its on-chain ID
-            const submission = submissions.find(s => s.id === photoId);
-            
-            if (submission && submission.onChainSubmissionId) {
-              const result = await voteForSubmission(submission.onChainSubmissionId, 1);
-              txHash = result.txHash;
-              console.log('[Frontend] Blockchain vote successful:', txHash);
-            } else {
-              console.warn('[Frontend] Skipping blockchain vote: No on-chain submission ID found for', photoId);
-              // We proceed to backend vote even if on-chain fails/skips for legacy support
-            }
-          } catch (chainError) {
-            console.error('[Frontend] Blockchain vote failed:', chainError);
-            // We proceed to backend vote even if chain fails
-          }
-
-        // 2. Submit vote to backend
-        const response = await fetch('/api/votes', {
-          method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             submissionId: photoId,
