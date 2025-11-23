@@ -12,7 +12,7 @@ interface IRequestPayload {
 export async function POST(req: NextRequest) {
   try {
     const { payload, action, signal, walletAddress } = (await req.json()) as IRequestPayload
-    const app_id = process.env.APP_ID as `app_${string}` || "app_a9e1e8a3c65d60bcf0432ec93883b524"
+    const app_id = process.env.APP_ID as `app_${string}` || "app_a7a17919b878ba65fbcbcc116bde80be"
     
     console.log("[API] Received verification request:", { action, app_id, hasPayload: !!payload, walletAddress })
     

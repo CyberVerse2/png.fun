@@ -17,9 +17,9 @@ import { useEffect } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useUser } from '@/components/minikit-provider';
 import { supabase } from '@/lib/supabase';
-import { MiniKit, VerificationLevel } from '@worldcoin/minikit-js';
+import { MiniKit } from '@worldcoin/minikit-js';
 import { 
-  voteForSubmission, 
+  voteOnSubmissionMiniKit, 
   submitPhoto as submitPhotoOnChain 
 } from '@/lib/contracts/interactions';
 
@@ -175,20 +175,74 @@ export default function Home() {
   const [capturedPhotoUrl, setCapturedPhotoUrl] = React.useState<string | null>(null);
 
   // Supabase data state
-  const [challenge, setChallenge] = React.useState<any>(null);
-  const [submissions, setSubmissions] = React.useState<any[]>([]);
-  const [leaderboardData, setLeaderboardData] = React.useState<any[]>([]);
+  const [challenge, setChallenge] = React.useState<{
+    id: string;
+    title: string;
+    description?: string;
+    end_time: string;
+    prize_pool?: number;
+    on_chain_challenge_id?: number;
+  } | null>(null);
+  const [submissions, setSubmissions] = React.useState<{
+    id: string;
+    imageUrl: string;
+    username: string;
+    avatarUrl: string;
+    rank?: number;
+    wld: number;
+    potentialWld: number;
+    onChainSubmissionId?: number;
+  }[]>([]);
+  const [leaderboardData, setLeaderboardData] = React.useState<{
+    rank: number;
+    username: string;
+    avatarUrl: string;
+    wld: number;
+    wins: number;
+    imageUrl: string;
+    walletAddress?: string;
+    submissionId?: string;
+    userId?: string;
+  }[]>([]);
   const [loading, setLoading] = React.useState(true);
   const [userId, setUserId] = React.useState<string | null>(null);
   const [isWorldIdVerified, setIsWorldIdVerified] = React.useState(false);
   const [hasSubmittedToday, setHasSubmittedToday] = React.useState(false);
-  const [userSubmission, setUserSubmission] = React.useState<any>(null);
+  const [userSubmission, setUserSubmission] = React.useState<{
+    id: string;
+    photo_url: string;
+  } | null>(null);
   const [showAlreadySubmittedModal, setShowAlreadySubmittedModal] = React.useState(false);
   const [userStats, setUserStats] = React.useState<{ wld: number; wins: number; rank?: number }>({
     wld: 0,
     wins: 0
   });
-  const [profileData, setProfileData] = React.useState<any>(null);
+  const [profileData, setProfileData] = React.useState<{
+    username: string;
+    avatarUrl: string;
+    wld: number;
+    wins: number;
+    streak: number;
+    totalWldEarned: number;
+    submissions: Array<{
+      id: string;
+      imageUrl: string;
+      challenge: string;
+      votes: number;
+      rank: number;
+    }>;
+    predictions: Array<{
+      id: string;
+      challenge: string;
+      status: 'active' | 'won' | 'lost';
+      amount: number;
+      imageUrl: string;
+      photographer: {
+        username: string;
+        avatarUrl: string;
+      };
+    }>;
+  } | null>(null);
   const [votedSubmissionIds, setVotedSubmissionIds] = React.useState<Set<string>>(new Set());
 
   const [checkingOnboarding, setCheckingOnboarding] = React.useState(true);
@@ -622,7 +676,7 @@ export default function Home() {
       const predictions = (votesData || []).map((vote: any) => ({
         id: vote.id,
         challenge: vote.submission?.challenge?.title || 'Challenge',
-        status: vote.status || 'active', // 'active', 'won', 'lost'
+        status: (['active', 'won', 'lost'].includes(vote.status) ? vote.status : 'active') as 'active' | 'won' | 'lost',
         amount: vote.wld_amount || 0,
         imageUrl: vote.submission?.photo_url || '/placeholder.svg',
         photographer: {
@@ -678,6 +732,25 @@ export default function Home() {
     console.log('[Frontend] Vote action:', { photoId, vote, userId });
 
     // Only create a vote for "up" (swipe right/yes)
+    if (vote === 'up') {
+      let txHash = '';
+
+      try {
+        // Vote on chain first
+        console.log('[Frontend] Voting on blockchain...');
+        const voteResult = await voteOnSubmissionMiniKit(Number(photoId), 1);
+        txHash = voteResult.transactionId;
+        console.log('[Frontend] Blockchain vote successful:', txHash);
+      } catch (error) {
+        console.error('[Frontend] Blockchain vote failed:', error);
+        alert('Failed to vote on blockchain. Please try again.');
+        return;
+      }
+
+      // Create vote in database
+      try {
+        const response = await fetch('/api/votes', {
+          method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             submissionId: photoId,
@@ -776,8 +849,8 @@ export default function Home() {
         const numericChallengeId = challenge.on_chain_challenge_id || (isNaN(Number(challenge.id)) ? 1 : Number(challenge.id));
         
         const chainResult = await submitPhotoOnChain(numericChallengeId, capturedPhotoUrl);
-        txHash = chainResult.txHash;
-        onChainSubmissionId = chainResult.submissionId;
+        txHash = chainResult.transactionId;
+        onChainSubmissionId = 0; // submitPhotoOnChain doesn't return submissionId, will be set by contract event
         console.log('[Frontend] Blockchain submission successful:', txHash);
       } catch (chainError) {
         console.error('[Frontend] Blockchain submission failed:', chainError);

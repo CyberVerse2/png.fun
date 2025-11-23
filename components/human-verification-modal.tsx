@@ -49,7 +49,6 @@ export function HumanVerificationModal({
     setLoading(true);
     try {
       const { finalPayload } = await MiniKit.commandsAsync.verify({
-        app_id: 'app_a9e1e8a3c65d60bcf0432ec93883b524', // Add App ID here
         action: 'verifyhuman',
         verification_level: VerificationLevel.Orb,
         signal: '' // Signal is optional but usually expected to be empty string if not used

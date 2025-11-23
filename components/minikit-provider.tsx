@@ -30,7 +30,7 @@ export default function MiniKitProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const initializeAndAuth = async () => {
       console.log('[MiniKit] Initializing MiniKit...');
-      MiniKit.install('app_a9e1e8a3c65d60bcf0432ec93883b524');
+      MiniKit.install('app_a7a17919b878ba65fbcbcc116bde80be');
 
       // Auto-attempt sign-in on app launch
       if (MiniKit.isInstalled()) {

@@ -20,7 +20,7 @@ export async function GET(req: NextRequest) {
 
     // Fetch latest submission photo for each user
     const usersWithPhotos = await Promise.all(
-      (users || []).map(async (user) => {
+      (users || []).map(async (user: any) => {
         const { data: submission } = await supabaseAdmin
           .from('submissions')
           .select('photo_url')
