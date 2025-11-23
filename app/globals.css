@@ -1,35 +1,35 @@
-@import "tailwindcss";
-@import "tw-animate-css";
+@import 'tailwindcss';
+@import 'tw-animate-css';
 
 @custom-variant dark (&:is(.dark *));
 
-/* Updated design tokens for Neobrutalist theme with Electric Blue primary */
+/* Neobrutalist theme with dark-mode-first palette and glass-morphism shadows */
 :root {
-  --background: #ffffff;
-  --foreground: oklch(0.15 0 0);
-  --card: #ffffff;
-  --card-foreground: oklch(0.15 0 0);
-  --popover: #ffffff;
-  --popover-foreground: oklch(0.15 0 0);
-  --primary: oklch(0.45 0.25 250);
-  --primary-foreground: #ffffff;
-  --secondary: oklch(0.92 0.02 250);
-  --secondary-foreground: oklch(0.15 0 0);
-  --muted: oklch(0.92 0.02 250);
-  --muted-foreground: oklch(0.45 0 0);
-  --accent: oklch(0.92 0.02 250);
-  --accent-foreground: oklch(0.15 0 0);
+  --background: oklch(1 0 0);
+  --foreground: oklch(0.145 0 0);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.145 0 0);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.145 0 0);
+  --primary: oklch(0.205 0 0);
+  --primary-foreground: oklch(0.985 0 0);
+  --secondary: oklch(0.97 0 0);
+  --secondary-foreground: oklch(0.205 0 0);
+  --muted: oklch(0.97 0 0);
+  --muted-foreground: oklch(0.556 0 0);
+  --accent: oklch(0.97 0 0);
+  --accent-foreground: oklch(0.205 0 0);
   --destructive: oklch(0.577 0.245 27.325);
-  --destructive-foreground: #ffffff;
-  --border: oklch(0.15 0 0);
-  --input: oklch(0.15 0 0);
-  --ring: oklch(0.45 0.25 250);
-  --chart-1: oklch(0.45 0.25 250);
+  --destructive-foreground: oklch(0.577 0.245 27.325);
+  --border: oklch(0.922 0 0);
+  --input: oklch(0.922 0 0);
+  --ring: oklch(0.708 0 0);
+  --chart-1: oklch(0.646 0.222 41.116);
   --chart-2: oklch(0.6 0.118 184.704);
   --chart-3: oklch(0.398 0.07 227.392);
   --chart-4: oklch(0.828 0.189 84.429);
   --chart-5: oklch(0.769 0.188 70.08);
-  --radius: 0.75rem;
+  --radius: 0.625rem;
   --sidebar: oklch(0.985 0 0);
   --sidebar-foreground: oklch(0.145 0 0);
   --sidebar-primary: oklch(0.205 0 0);
@@ -76,8 +76,8 @@
 }
 
 @theme inline {
-  --font-sans: "Geist", "Geist Fallback";
-  --font-mono: "Geist Mono", "Geist Mono Fallback";
+  --font-sans: 'Geist', 'Geist Fallback';
+  --font-mono: 'Geist Mono', 'Geist Mono Fallback';
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-card: var(--card);
@@ -125,29 +125,29 @@
   }
 }
 
-/* Added Neobrutalist utility classes - removed @apply to avoid errors */
+/* Neobrutalist utility classes with glass-morphism-inspired shadows */
 @layer utilities {
   .neo-border {
-    border: 5px solid oklch(0.15 0 0);
+    border: 2px solid var(--foreground);
   }
 
   .neo-shadow {
-    box-shadow: 6px 6px 0px oklch(0.15 0 0);
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
   }
 
   .neo-shadow-sm {
-    box-shadow: 3px 3px 0px oklch(0.15 0 0);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
   }
 
   .neo-pressed {
     transform: translate(2px, 2px);
-    box-shadow: 4px 4px 0px oklch(0.15 0 0);
+    box-shadow: 0 2px 3px rgba(0, 0, 0, 0.2);
   }
 
   .neo-card {
-    border: 5px solid oklch(0.15 0 0);
-    box-shadow: 6px 6px 0px oklch(0.15 0 0);
-    border-radius: 0.75rem;
+    border: 2px solid var(--foreground);
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+    border-radius: var(--radius);
     background-color: var(--background);
   }
 }

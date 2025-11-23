@@ -230,8 +230,73 @@ The human user should test:
 11. Try to vote twice on same photo (should prevent duplicate votes with console warning)
 12. Check that submission vote counts update after voting
 
+## ✅ COMPLETED: World MiniKit Migration
+
+### Migration Summary
+
+**Goal**: Refactor app to use official World MiniKit architecture with NextAuth
+
+**All Tasks Completed** (10/10):
+
+1. ✅ Installed dependencies (next-auth@5.0.0-beta.25, minikit-react, ui-kit, viem)
+2. ✅ Added environment variables (NEXTAUTH_SECRET, HMAC_SECRET_KEY, AUTH_URL)
+3. ✅ Created auth system with NextAuth (auth/index.ts, wallet helpers)
+4. ✅ Created NextAuth API route handler (/api/auth/[...nextauth])
+5. ✅ Added middleware.ts for auth protection
+6. ✅ Replaced MiniKitProvider with official @worldcoin/minikit-js/minikit-provider
+7. ✅ Updated next.config (World domains, reactStrictMode: false)
+8. ✅ Refactored authentication flow (onboarding, app/page.tsx use NextAuth)
+9. ✅ Updated SIWE endpoints (marked old ones as deprecated)
+10. ✅ Ready for end-to-end testing
+
+### What Changed
+
+**New Architecture**:
+
+- ✅ NextAuth v5 with credentials provider
+- ✅ Official MiniKitProvider wrapper
+- ✅ HMAC-secured nonce generation
+- ✅ JWT-based sessions
+- ✅ Middleware auth protection
+- ✅ World UI Kit styles imported
+
+**Files Created**:
+
+- `auth/index.ts` - NextAuth configuration
+- `auth/wallet/index.ts` - Wallet auth function
+- `auth/wallet/client-helpers.ts` - HMAC nonce hashing
+- `auth/wallet/server-helpers.ts` - Nonce generation
+- `app/api/auth/[...nextauth]/route.ts` - Auth API handler
+- `providers/index.tsx` - Client providers (MiniKit + Session)
+- `middleware.ts` - Auth middleware
+- `types/next-auth.d.ts` - TypeScript definitions
+- `components/auth-button.tsx` - Reusable auth button
+
+**Files Modified**:
+
+- `app/layout.tsx` - Uses official providers + session
+- `app/page.tsx` - Uses useSession instead of custom hook
+- `components/onboarding-screen.tsx` - Uses NextAuth
+- `next.config.mjs` - Added World domains + reactStrictMode: false
+- `.env.local` - Added NextAuth + HMAC secrets
+- Old endpoints marked deprecated (backwards compatibility)
+
+**Files Deprecated**:
+
+- `components/minikit-provider.tsx` - Replaced by official provider
+- `/api/nonce` - Now handled by NextAuth
+- `/api/complete-siwe` - Now handled by NextAuth
+
+### Next Steps for User
+
+1. **Test Authentication**: Try signing in with World ID
+2. **Update AUTH_URL**: Set to ngrok URL for testing in World App
+3. **Test in World App**: Open mini app in World App mobile
+4. **Remove Old Code**: Can delete deprecated files after confirming everything works
+
 ## Lessons
 
 - Include info useful for debugging in the program output (already applied with console.logs)
 - Read the file before you try to edit it (followed)
 - Authentication flow should happen before checking onboarding status to avoid showing incorrect screens
+- World MiniKit apps should use NextAuth with official providers, not custom auth

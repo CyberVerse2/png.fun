@@ -1,6 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 
+/**
+ * @deprecated This endpoint is deprecated. Authentication now handled by NextAuth.
+ * See /auth/wallet/server-helpers.ts for nonce generation.
+ * Kept for backwards compatibility during migration.
+ */
 export async function GET() {
   // Generate a unique nonce for wallet authentication
   // The nonce must be at least 8 alphanumeric characters

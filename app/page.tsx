@@ -15,7 +15,7 @@ import { SuccessScreen } from '@/components/success-screen';
 import { NotificationPrompt } from '@/components/notification-prompt';
 import { useEffect } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { useUser } from '@/components/minikit-provider';
+import { useSession } from 'next-auth/react';
 import { supabase } from '@/lib/supabase';
 import { MiniKit } from '@worldcoin/minikit-js';
 
@@ -189,8 +189,31 @@ export default function Home() {
 
   const [checkingOnboarding, setCheckingOnboarding] = React.useState(true);
 
-  // Get authenticated user
-  const user = useUser();
+  // Get authenticated user session
+  const { data: session, status } = useSession();
+
+  // Log session changes
+  React.useEffect(() => {
+    console.log('[App] [Session] ========================================');
+    console.log('[App] [Session] Session status changed:', status);
+    console.log('[App] [Session] Session data:', {
+      hasSession: !!session,
+      hasUser: !!session?.user,
+      walletAddress: session?.user?.walletAddress?.substring(0, 10) + '...' || 'null',
+      username: session?.user?.username || 'null',
+      hasProfilePicture: !!session?.user?.profilePictureUrl,
+      expires: session?.expires
+    });
+    console.log('[App] [Session] ========================================');
+  }, [session, status]);
+
+  const user = {
+    isLoading: status === 'loading',
+    isAuthenticated: status === 'authenticated',
+    walletAddress: session?.user?.walletAddress || null,
+    username: session?.user?.username || null,
+    profilePictureUrl: session?.user?.profilePictureUrl || null
+  };
 
   // Don't show onboarding immediately - wait for DB check
   // This useEffect is now handled by the fetchUserData effect below

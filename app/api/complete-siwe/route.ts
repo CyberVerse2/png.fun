@@ -10,6 +10,11 @@ interface IRequestPayload {
   profilePictureUrl?: string;
 }
 
+/**
+ * @deprecated This endpoint is deprecated. Authentication now handled by NextAuth.
+ * See /auth/index.ts for SIWE verification.
+ * Kept for backwards compatibility during migration.
+ */
 export async function POST(req: NextRequest) {
   console.log('[API] SIWE verification request received');
 

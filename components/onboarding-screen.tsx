@@ -7,7 +7,8 @@ import { Camera, Trophy, Users } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { SuccessScreen } from './success-screen';
 import { MiniKit, Permission } from '@worldcoin/minikit-js';
-import { useUser, useAuth } from '@/components/minikit-provider';
+import { useSession } from 'next-auth/react';
+import { walletAuth } from '@/auth/wallet';
 
 interface OnboardingScreenProps {
   onComplete: (notificationsEnabled: boolean) => void;
@@ -17,8 +18,20 @@ export function OnboardingScreen({ onComplete }: OnboardingScreenProps) {
   const [step, setStep] = React.useState(0);
   const [showSuccess, setShowSuccess] = React.useState(false);
   const [notificationsEnabled, setNotificationsEnabled] = React.useState(false);
-  const { isAuthenticated } = useUser();
-  const authenticate = useAuth();
+  const { data: session, status } = useSession();
+  const isAuthenticated = status === 'authenticated';
+
+  // Log auth state changes
+  React.useEffect(() => {
+    console.log('[Onboarding] [Auth State] Status:', status);
+    console.log('[Onboarding] [Auth State] Is authenticated:', isAuthenticated);
+    if (session?.user) {
+      console.log('[Onboarding] [Auth State] User:', {
+        walletAddress: session.user.walletAddress?.substring(0, 10) + '...',
+        username: session.user.username || 'null'
+      });
+    }
+  }, [status, isAuthenticated, session]);
 
   const steps = [
     {
@@ -61,16 +74,42 @@ export function OnboardingScreen({ onComplete }: OnboardingScreenProps) {
   }, [isAuthenticated]);
 
   const handleGetStarted = async () => {
+    console.log('[Onboarding] ========================================');
     console.log('[Onboarding] handleGetStarted triggered');
+    console.log('[Onboarding] Current auth state:', {
+      isAuthenticated,
+      status,
+      hasSession: !!session
+    });
 
     // 1. Authenticate if needed
     if (!isAuthenticated) {
       console.log('[Onboarding] User not authenticated, triggering login...');
-      const success = await authenticate();
-      console.log('[Onboarding] Authentication result:', success);
+      console.log('[Onboarding] About to call walletAuth()...');
+      console.log('[Onboarding] walletAuth function:', typeof walletAuth);
+      console.log('[Onboarding] Calling walletAuth NOW...');
 
-      if (!success) {
-        console.log('[Onboarding] Authentication failed or cancelled');
+      try {
+        console.log('[Onboarding] ⏳ Calling walletAuth()...');
+        const success = await walletAuth();
+        console.log('[Onboarding] ✅ walletAuth() completed, result:', success);
+        console.log('[Onboarding] walletAuth() returned:', success);
+        console.log('[Onboarding] Authentication result:', success);
+
+        if (!success) {
+          console.warn('[Onboarding] ✗ Authentication failed or cancelled');
+          console.log('[Onboarding] ========================================');
+          return;
+        }
+
+        console.log('[Onboarding] ✓ Authentication successful, continuing...');
+      } catch (error) {
+        console.error('[Onboarding] ERROR calling walletAuth():', error);
+        console.error('[Onboarding] Error details:', {
+          message: error instanceof Error ? error.message : 'Unknown error',
+          stack: error instanceof Error ? error.stack : undefined
+        });
+        console.log('[Onboarding] ========================================');
         return;
       }
     } else {
@@ -230,7 +269,7 @@ export function OnboardingScreen({ onComplete }: OnboardingScreenProps) {
             onClick={async () => {
               // If not authenticated, authenticate first
               if (!isAuthenticated) {
-                const success = await authenticate();
+                const success = await walletAuth();
                 if (!success) {
                   alert('Please connect your wallet to continue');
                   return;
