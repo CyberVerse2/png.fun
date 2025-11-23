@@ -5,10 +5,14 @@ const nextConfig = {
   },
   images: {
     unoptimized: true,
-    domains: ['static.usernames.app-backend.toolsforhumanity.com']
-  },
-  experimental: {
-    allowedDevOrigins: ['*'] // Change to your domain in production
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: 'static.usernames.app-backend.toolsforhumanity.com',
+        port: '',
+        pathname: '/**',
+      },
+    ],
   },
   reactStrictMode: false
 };
