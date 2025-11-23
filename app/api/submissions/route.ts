@@ -12,12 +12,14 @@ interface SubmissionRequest {
 
 export async function POST(req: NextRequest) {
   try {
-    const { challengeId, userId, photoData } = (await req.json()) as SubmissionRequest;
+    const { challengeId, userId, photoData, txHash, onChainId } = (await req.json()) as SubmissionRequest & { txHash?: string, onChainId?: number };
     const photoDataLength = photoData?.length || 0;
     console.log('Submission request received:', {
       challengeId: challengeId,
       userId: userId,
-      photoDataLength: photoDataLength
+      photoDataLength: photoDataLength,
+      txHash,
+      onChainId
     })
 
     if (!challengeId || !userId || !photoData) {
@@ -39,7 +41,9 @@ export async function POST(req: NextRequest) {
         challenge_id: challengeId,
         user_id: userId,
         photo_url: photoUrl,
-        verified: true // Set to true after World ID verification
+        verified: true, // Set to true after World ID verification
+        submission_tx_hash: txHash,
+        on_chain_submission_id: onChainId
       })
       .select()
       .single();

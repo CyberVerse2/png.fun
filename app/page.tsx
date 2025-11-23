@@ -17,7 +17,11 @@ import { useEffect } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useUser } from '@/components/minikit-provider';
 import { supabase } from '@/lib/supabase';
-import { MiniKit } from '@worldcoin/minikit-js';
+import { MiniKit, VerificationLevel } from '@worldcoin/minikit-js';
+import { 
+  voteForSubmission, 
+  submitPhoto as submitPhotoOnChain 
+} from '@/lib/contracts/interactions';
 
 // Mock data
 const mockPhotos = [
@@ -415,7 +419,8 @@ export default function Home() {
               avatarUrl: sub.user?.profile_picture_url || '/placeholder.svg',
               rank: sub.rank,
               wld: sub.total_wld_voted,
-              potentialWld: sub.total_wld_voted * 2
+              potentialWld: sub.total_wld_voted * 2,
+              onChainSubmissionId: sub.on_chain_submission_id
             };
           })
           // Filter out submissions the user has already voted on
@@ -664,28 +669,6 @@ export default function Home() {
     }
   }, [userId]);
 
-  // Refetch submissions when voted submission IDs change (to filter them out)
-  useEffect(() => {
-    if (challenge?.id && votedSubmissionIds.size > 0) {
-      console.log('[Frontend] Voted submissions updated, refetching to filter...');
-      fetchSubmissions(challenge.id);
-    }
-  }, [votedSubmissionIds]);
-
-  // Show loading screen while checking user/onboarding
-  if (user.isLoading || checkingOnboarding) {
-    return (
-      <div className="fixed inset-0 bg-background flex items-center justify-center z-100">
-        <div className="flex flex-col items-center gap-4">
-          <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin" />
-          <div className="text-xl font-black uppercase tracking-widest animate-pulse">
-            Loading...
-          </div>
-        </div>
-      </div>
-    );
-  }
-
   const handleVote = async (photoId: string, vote: 'up' | 'down') => {
     if (!userId) {
       console.warn('[Frontend] No user ID available for voting');
@@ -699,13 +682,37 @@ export default function Home() {
     if (vote === 'up') {
       try {
         console.log('[Frontend] Creating vote with 1 WLD...');
+        
+          // 1. Submit vote to blockchain
+          let txHash = '';
+          try {
+            console.log('[Frontend] Initiating blockchain vote...');
+            
+            // Find the submission to get its on-chain ID
+            const submission = submissions.find(s => s.id === photoId);
+            
+            if (submission && submission.onChainSubmissionId) {
+              const result = await voteForSubmission(submission.onChainSubmissionId, 1);
+              txHash = result.txHash;
+              console.log('[Frontend] Blockchain vote successful:', txHash);
+            } else {
+              console.warn('[Frontend] Skipping blockchain vote: No on-chain submission ID found for', photoId);
+              // We proceed to backend vote even if on-chain fails/skips for legacy support
+            }
+          } catch (chainError) {
+            console.error('[Frontend] Blockchain vote failed:', chainError);
+            // We proceed to backend vote even if chain fails
+          }
+
+        // 2. Submit vote to backend
         const response = await fetch('/api/votes', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             submissionId: photoId,
             voterId: userId,
-            wldAmount: 1 // Each yes vote adds 1 WLD
+            wldAmount: 1, // Each yes vote adds 1 WLD
+            txHash: txHash // Store the transaction hash
           })
         });
 
@@ -788,14 +795,38 @@ export default function Home() {
     try {
       setLoading(true);
 
-      // Submit photo to API
+      // 1. Submit to Blockchain
+      let txHash = '';
+      let onChainSubmissionId = 0;
+      
+      try {
+        console.log('[Frontend] Submitting to blockchain...');
+        // Use the on-chain challenge ID from the database, or fallback to 1 for dev/test
+        const numericChallengeId = challenge.on_chain_challenge_id || (isNaN(Number(challenge.id)) ? 1 : Number(challenge.id));
+        
+        const chainResult = await submitPhotoOnChain(numericChallengeId, capturedPhotoUrl);
+        txHash = chainResult.txHash;
+        onChainSubmissionId = chainResult.submissionId;
+        console.log('[Frontend] Blockchain submission successful:', txHash);
+      } catch (chainError) {
+        console.error('[Frontend] Blockchain submission failed:', chainError);
+        // Decide if we want to block submission if chain fails
+        // For now, let's alert the user but allow DB submission for testing (or return to stop)
+        alert('Blockchain submission failed. Please check your wallet connection.');
+        setLoading(false);
+        return;
+      }
+
+      // 2. Submit photo to API (Database)
       const response = await fetch('/api/submissions', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           challengeId: challenge.id,
           userId: userId,
-          photoData: capturedPhotoUrl // base64 data URL
+          photoData: capturedPhotoUrl, // base64 data URL
+          txHash: txHash,
+          onChainId: onChainSubmissionId
         })
       });
 

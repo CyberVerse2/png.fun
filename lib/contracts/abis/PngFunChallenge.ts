@@ -155,6 +155,45 @@ export const PngFunChallengeABI = [
     "type": "event"
   },
   {
+    "inputs": [],
+    "name": "MAX_CHALLENGE_DURATION",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "MIN_CHALLENGE_DURATION",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "MIN_VOTE_AMOUNT",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
     "inputs": [
       {
         "internalType": "uint256",
@@ -435,6 +474,40 @@ export const PngFunChallengeABI = [
         "internalType": "address",
         "name": "user",
         "type": "address"
+      }
+    ],
+    "name": "getUserStats",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "totalWins",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "totalWLDEarned",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "currentStreak",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "pendingWinnings",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "user",
+        "type": "address"
       },
       {
         "internalType": "uint256",
@@ -515,30 +588,6 @@ export const PngFunChallengeABI = [
     "type": "function"
   },
   {
-    "inputs": [
-      {
-        "internalType": "uint256",
-        "name": "challengeId",
-        "type": "uint256"
-      },
-      {
-        "internalType": "bytes32",
-        "name": "photoHash",
-        "type": "bytes32"
-      }
-    ],
-    "name": "submitPhoto",
-    "outputs": [
-      {
-        "internalType": "uint256",
-        "name": "",
-        "type": "uint256"
-      }
-    ],
-    "stateMutability": "nonpayable",
-    "type": "function"
-  },
-  {
     "inputs": [],
     "name": "submissionCounter",
     "outputs": [
@@ -598,6 +647,30 @@ export const PngFunChallengeABI = [
       }
     ],
     "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "challengeId",
+        "type": "uint256"
+      },
+      {
+        "internalType": "bytes32",
+        "name": "photoHash",
+        "type": "bytes32"
+      }
+    ],
+    "name": "submitPhoto",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "nonpayable",
     "type": "function"
   },
   {
@@ -700,7 +773,7 @@ export const PngFunChallengeABI = [
     "name": "wldToken",
     "outputs": [
       {
-        "internalType": "address",
+        "internalType": "contract IERC20",
         "name": "",
         "type": "address"
       }

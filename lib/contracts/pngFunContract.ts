@@ -1,7 +1,14 @@
 import { ethers } from 'ethers';
+
+declare global {
+  interface Window {
+    ethereum?: any;
+  }
+}
+
 import { CURRENT_NETWORK } from './config';
 import { MockWLDABI } from './abis/MockWLD';
-import { PngFunChallengeABI } from './abis/PngFunChallenge';
+import { PngFunChallengeABI } from '@/lib/contracts/abis/PngFunChallenge';
 
 // Initialize provider
 export function getProvider() {
@@ -42,7 +49,7 @@ export async function getWLDContract() {
   const provider = getProvider();
   const runner = provider instanceof ethers.BrowserProvider ? await provider.getSigner() : provider;
 
-  const wldAddress = process.env.NEXT_PUBLIC_NETWORK === 'mainnet'
+  const wldAddress = 'wld' in CURRENT_NETWORK
     ? CURRENT_NETWORK.wld
     : CURRENT_NETWORK.mockWLD;
     

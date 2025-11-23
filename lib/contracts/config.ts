@@ -1,7 +1,7 @@
 export const CONTRACTS = {
   sepolia: {
-    mockWLD: '0x8FD73bCA4cA6EEE4A4a3797951F969a2088FD786', // Your deployed MockWLD
-    pngFunChallenge: '', // UPDATE THIS after deploying PngFunChallenge
+    mockWLD: '0x8FD73bCA4cA6EEE4A4a3797951F969a2088FD786',
+    pngFunChallenge: '0x43bd53c3e601d9760e71dDc5dFB76E786CE5d671',
     chainId: 4801,
     rpcUrl: 'https://worldchain-sepolia.g.alchemy.com/public',
   },

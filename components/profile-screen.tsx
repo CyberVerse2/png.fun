@@ -1,10 +1,14 @@
-"use client"
+import { claimWinnings } from "@/lib/contracts/interactions"
+import { useState } from "react"
+import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
 import { NeoCard } from "./neo-card"
 import { Trophy, Zap, Flame } from "lucide-react"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useUser } from "./minikit-provider"
+
+// ... existing interfaces ...
 
 interface ProfileData {
   username: string
@@ -39,11 +43,27 @@ interface ProfileScreenProps {
 
 export function ProfileScreen({ data }: ProfileScreenProps) {
   const user = useUser()
+  const [isClaiming, setIsClaiming] = useState(false)
   
   // Use real user data if authenticated, otherwise fall back to mock data
   const displayUsername = user.isAuthenticated && user.username ? user.username : data.username
   const displayAvatar = user.isAuthenticated && user.profilePictureUrl ? user.profilePictureUrl : data.avatarUrl
   const displayWalletAddress = user.walletAddress
+
+  const handleClaim = async () => {
+    try {
+      setIsClaiming(true)
+      console.log("Claiming winnings...")
+      const result = await claimWinnings()
+      console.log("Claim successful:", result.txHash)
+      alert("Winnings claimed successfully! Tx: " + result.txHash)
+    } catch (error) {
+      console.error("Error claiming winnings:", error)
+      alert("Failed to claim winnings. See console for details.")
+    } finally {
+      setIsClaiming(false)
+    }
+  }
   
   return (
     <div className="flex-1 overflow-y-auto px-6 pb-24 pt-6">
@@ -59,10 +79,22 @@ export function ProfileScreen({ data }: ProfileScreenProps) {
             {displayWalletAddress.slice(0, 6)}...{displayWalletAddress.slice(-4)}
           </p>
         )}
-        <Badge className="bg-primary text-primary-foreground font-black border-2 border-foreground">
-          <Zap className="h-3 w-3 mr-1" />
-          {data.wld} WLD
-        </Badge>
+        <div className="flex items-center justify-center gap-2">
+          <Badge className="bg-primary text-primary-foreground font-black border-2 border-foreground px-3 py-1 text-lg">
+            <Zap className="h-4 w-4 mr-1" />
+            {data.wld} WLD
+          </Badge>
+          {data.wld > 0 && (
+            <Button 
+              size="sm" 
+              className="h-8 font-black uppercase text-xs"
+              onClick={handleClaim}
+              disabled={isClaiming}
+            >
+              {isClaiming ? "Claiming..." : "Claim"}
+            </Button>
+          )}
+        </div>
       </div>
 
       {/* Stats Grid */}
