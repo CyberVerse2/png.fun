@@ -474,6 +474,22 @@ export default function Home() {
                 wins: userData.total_wins,
                 rank: userIndex + 1
               });
+            } else {
+              // User not in top 10, fetch their actual rank
+              console.log('[Frontend] User not in top 10, fetching actual rank...');
+              try {
+                const rankRes = await fetch(`/api/user/rank?walletAddress=${encodeURIComponent(walletAddress)}`);
+                const rankData = await rankRes.json();
+                if (rankRes.ok && rankData.rank) {
+                  setUserStats(prev => ({
+                    ...prev,
+                    rank: rankData.rank
+                  }));
+                  console.log('[Frontend] User actual rank:', rankData.rank);
+                }
+              } catch (error) {
+                console.error('[Frontend] Failed to fetch user rank:', error);
+              }
             }
           }
 
@@ -1047,7 +1063,7 @@ export default function Home() {
             >
               <LeaderboardScreen
                 entries={leaderboardData}
-                currentUserRank={userStats.rank || 15}
+                currentUserRank={userStats.rank}
                 currentUser={{
                   username: session?.user?.username || 'You',
                   avatarUrl: session?.user?.profilePictureUrl || '/placeholder.svg',

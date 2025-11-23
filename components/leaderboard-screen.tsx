@@ -81,7 +81,7 @@ export function LeaderboardScreen({
                   alt={`Winner ${entries[0].username}`}
                   className="w-full h-full object-cover"
                 />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
+                <div className="absolute inset-0 bg-linear-to-t from-black/80 via-black/20 to-transparent" />
 
                 <div className="absolute bottom-0 left-0 right-0 p-4 text-white">
                   <div className="mb-2">
@@ -92,9 +92,9 @@ export function LeaderboardScreen({
                   </div>
 
                   <div className="flex items-center gap-3 mt-3 bg-black/40 p-2 rounded-lg backdrop-blur-sm border border-white/10">
-                    <Avatar className="h-10 w-10 border-2 border-primary rounded-lg">
+                    <Avatar className="h-10 w-10 border-2 border-primary rounded-full">
                       <AvatarImage src={entries[0].avatarUrl || '/placeholder.svg'} />
-                      <AvatarFallback className="bg-primary text-primary-foreground rounded-lg">
+                      <AvatarFallback className="bg-primary text-primary-foreground rounded-full">
                         {entries[0].username[0]}
                       </AvatarFallback>
                     </Avatar>
@@ -228,7 +228,7 @@ function LeaderboardRowCard({
     >
       <div className="flex items-center gap-4">
         {/* Visual Focal Point: Submission Image with Overlay Profile */}
-        <div className="relative h-14 w-14 flex-shrink-0">
+        <div className="relative h-14 w-14 shrink-0">
           {/* Submission Image */}
           <img
             src={entry.imageUrl || '/placeholder.svg'}
@@ -250,7 +250,7 @@ function LeaderboardRowCard({
           {/* Profile Picture Overlay (Bottom Right) */}
           <div className="absolute -bottom-2 -right-2">
             <Avatar
-              className={`h-8 w-8 rounded-lg border-2 ${
+              className={`h-8 w-8 rounded-full border-2 ${
                 isSticky ? 'border-primary' : 'border-white'
               } shadow-sm`}
             >
