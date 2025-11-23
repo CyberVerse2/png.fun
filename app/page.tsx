@@ -185,6 +185,7 @@ export default function Home() {
     wins: 0
   });
   const [profileData, setProfileData] = React.useState<any>(null);
+  const [votedSubmissionIds, setVotedSubmissionIds] = React.useState<Set<string>>(new Set());
 
   const [checkingOnboarding, setCheckingOnboarding] = React.useState(true);
 
@@ -369,6 +370,28 @@ export default function Home() {
   };
 
   // Fetch submissions for voting
+  // Fetch user's votes for the current challenge
+  const fetchUserVotes = async () => {
+    if (!userId) return;
+
+    console.log('[Frontend] Fetching user votes for userId:', userId);
+    try {
+      const res = await fetch(`/api/votes?voterId=${userId}`, { cache: 'no-store' });
+      const data = await res.json();
+      console.log('[Frontend] User votes response:', data.votes?.length || 0, 'votes');
+
+      if (data.votes) {
+        const votedIds = new Set<string>(
+          data.votes.map((vote: any) => vote.submission_id as string)
+        );
+        console.log('[Frontend] Voted submission IDs:', Array.from(votedIds));
+        setVotedSubmissionIds(votedIds);
+      }
+    } catch (error) {
+      console.error('[Frontend] Error fetching user votes:', error);
+    }
+  };
+
   const fetchSubmissions = async (challengeId: string) => {
     console.log('[Frontend] Fetching submissions for challenge:', challengeId);
     try {
@@ -377,24 +400,34 @@ export default function Home() {
       console.log('[Frontend] Submissions response:', data.submissions?.length || 0, 'submissions');
       if (data.submissions) {
         // Transform to match expected format
-        const transformed = data.submissions.map((sub: any) => {
-          // Fallback to local username if this is the current user's submission and API returned null
-          let displayUsername = sub.user?.username;
-          if (!displayUsername && sub.user_id === userId && user.username) {
-            displayUsername = user.username;
-          }
+        const transformed = data.submissions
+          .map((sub: any) => {
+            // Fallback to local username if this is the current user's submission and API returned null
+            let displayUsername = sub.user?.username;
+            if (!displayUsername && sub.user_id === userId && user.username) {
+              displayUsername = user.username;
+            }
 
-          return {
-            id: sub.id,
-            imageUrl: sub.photo_url,
-            username: displayUsername || 'Anonymous',
-            avatarUrl: sub.user?.profile_picture_url || '/placeholder.svg',
-            rank: sub.rank,
-            wld: sub.total_wld_voted,
-            potentialWld: sub.total_wld_voted * 2
-          };
-        });
-        console.log('[Frontend] Transformed submissions:', transformed.length);
+            return {
+              id: sub.id,
+              imageUrl: sub.photo_url,
+              username: displayUsername || 'Anonymous',
+              avatarUrl: sub.user?.profile_picture_url || '/placeholder.svg',
+              rank: sub.rank,
+              wld: sub.total_wld_voted,
+              potentialWld: sub.total_wld_voted * 2
+            };
+          })
+          // Filter out submissions the user has already voted on
+          .filter((sub: any) => !votedSubmissionIds.has(sub.id));
+
+        console.log(
+          '[Frontend] Transformed submissions:',
+          transformed.length,
+          '(filtered out',
+          data.submissions.length - transformed.length,
+          'already voted)'
+        );
         setSubmissions(transformed);
       }
     } catch (error) {
@@ -404,55 +437,115 @@ export default function Home() {
     }
   };
 
-  // Fetch leaderboard
+  // Fetch leaderboard (shows current challenge submissions ranked by votes)
   const fetchLeaderboard = async () => {
     console.log('[Frontend] Fetching leaderboard...');
     try {
-      const res = await fetch('/api/leaderboard?limit=10');
+      // Fetch current challenge submissions ranked by votes instead of lifetime earnings
+      if (!challenge?.id) {
+        console.log('[Frontend] No active challenge, using user leaderboard');
+        const res = await fetch('/api/leaderboard?limit=10');
+        const data = await res.json();
+        console.log('[Frontend] Leaderboard response:', data.leaderboard?.length || 0, 'users');
+        if (data.leaderboard) {
+          let transformed = data.leaderboard.map((user: any, index: number) => ({
+            rank: index + 1,
+            username: user.username || 'Anonymous',
+            avatarUrl: user.profile_picture_url || '/placeholder.svg',
+            wld: user.total_wld_earned || 0,
+            wins: user.total_wins || 0,
+            imageUrl: user.latest_photo_url || '/placeholder.svg',
+            walletAddress: user.wallet_address
+          }));
+
+          // Calculate current user's rank and update stats
+          if (user.walletAddress) {
+            const userIndex = data.leaderboard.findIndex(
+              (u: any) => u.wallet_address === user.walletAddress
+            );
+            if (userIndex !== -1) {
+              const userData = data.leaderboard[userIndex];
+              setUserStats({
+                wld: userData.total_wld_earned || 0,
+                wins: userData.total_wins || 0,
+                rank: userIndex + 1
+              });
+              console.log('[Frontend] Updated user stats from leaderboard:', {
+                wld: userData.total_wld_earned,
+                wins: userData.total_wins,
+                rank: userIndex + 1
+              });
+            }
+          }
+
+          // Fill with mock data if less than 10 users
+          if (transformed.length < 10) {
+            const needed = 10 - transformed.length;
+            const mockDataToAdd = mockLeaderboard.slice(0, needed).map((mock, index) => ({
+              ...mock,
+              rank: transformed.length + index + 1
+            }));
+            transformed = [...transformed, ...mockDataToAdd];
+          }
+
+          setLeaderboardData(transformed);
+        }
+        return;
+      }
+
+      // Fetch submissions for current challenge, ranked by votes
+      const res = await fetch(`/api/submissions?challengeId=${challenge.id}`, {
+        cache: 'no-store'
+      });
       const data = await res.json();
-      console.log('[Frontend] Leaderboard response:', data.leaderboard?.length || 0, 'users');
-      if (data.leaderboard) {
-        let transformed = data.leaderboard.map((user: any, index: number) => ({
+      console.log(
+        '[Frontend] Challenge submissions leaderboard:',
+        data.submissions?.length || 0,
+        'submissions'
+      );
+
+      if (data.submissions) {
+        let transformed = data.submissions.map((sub: any, index: number) => ({
           rank: index + 1,
-          username: user.username || 'Anonymous',
-          avatarUrl: user.profile_picture_url || '/placeholder.svg',
-          wld: user.total_wld_earned || 0,
-          wins: user.total_wins || 0,
-          imageUrl: user.latest_photo_url || '/placeholder.svg',
-          walletAddress: user.wallet_address
+          username: sub.user?.username || 'Anonymous',
+          avatarUrl: sub.user?.profile_picture_url || '/placeholder.svg',
+          wld: sub.total_wld_voted || 0, // Current WLD votes on this submission
+          wins: 0,
+          imageUrl: sub.photo_url || '/placeholder.svg',
+          submissionId: sub.id,
+          userId: sub.user_id
         }));
 
-        // Calculate current user's rank and update stats
-        if (user.walletAddress) {
-          const userIndex = data.leaderboard.findIndex(
-            (u: any) => u.wallet_address === user.walletAddress
+        // Calculate current user's rank from submissions
+        if (userId) {
+          const userSubmissionIndex = data.submissions.findIndex(
+            (sub: any) => sub.user_id === userId
           );
-          if (userIndex !== -1) {
-            const userData = data.leaderboard[userIndex];
-            setUserStats({
-              wld: userData.total_wld_earned || 0,
-              wins: userData.total_wins || 0,
-              rank: userIndex + 1
-            });
-            console.log('[Frontend] Updated user stats from leaderboard:', {
-              wld: userData.total_wld_earned,
-              wins: userData.total_wins,
-              rank: userIndex + 1
-            });
+          if (userSubmissionIndex !== -1) {
+            const userSubmission = data.submissions[userSubmissionIndex];
+            setUserStats((prev) => ({
+              ...prev,
+              rank: userSubmissionIndex + 1
+            }));
+            console.log(
+              '[Frontend] Updated user rank from challenge leaderboard:',
+              userSubmissionIndex + 1
+            );
           }
         }
 
-        // Fill with mock data if less than 10 users
+        // Fill with mock data if less than 10 submissions
         if (transformed.length < 10) {
           const needed = 10 - transformed.length;
           const mockDataToAdd = mockLeaderboard.slice(0, needed).map((mock, index) => ({
             ...mock,
             rank: transformed.length + index + 1
+            // Keep original mock WLD values
           }));
           transformed = [...transformed, ...mockDataToAdd];
         }
 
-        console.log('[Frontend] Leaderboard transformed:', transformed.length, 'entries');
+        console.log('[Frontend] Challenge leaderboard transformed:', transformed.length, 'entries');
         setLeaderboardData(transformed);
       }
     } catch (error) {
@@ -497,8 +590,41 @@ export default function Home() {
         console.error('[Frontend] Error fetching submissions:', submissionsError);
       }
 
-      // Fetch user votes (predictions) - for now, we'll use empty array as votes table might not have the structure yet
-      const predictions: any[] = [];
+      // Fetch user votes (predictions)
+      const { data: votesData, error: votesError } = await supabase
+        .from('votes')
+        .select(
+          `
+          id,
+          wld_amount,
+          status,
+          submission:submissions(
+            id,
+            photo_url,
+            user_id,
+            challenge:challenges(title),
+            user:users(username, profile_picture_url)
+          )
+        `
+        )
+        .eq('voter_id', userId)
+        .order('created_at', { ascending: false });
+
+      if (votesError) {
+        console.error('[Frontend] Error fetching votes:', votesError);
+      }
+
+      const predictions = (votesData || []).map((vote: any) => ({
+        id: vote.id,
+        challenge: vote.submission?.challenge?.title || 'Challenge',
+        status: vote.status || 'active', // 'active', 'won', 'lost'
+        amount: vote.wld_amount || 0,
+        imageUrl: vote.submission?.photo_url || '/placeholder.svg',
+        photographer: {
+          username: vote.submission?.user?.username || 'Anonymous',
+          avatarUrl: vote.submission?.user?.profile_picture_url || '/placeholder.svg'
+        }
+      }));
 
       const profile = {
         username: userData.username || user.username || 'You',
@@ -530,12 +656,21 @@ export default function Home() {
     fetchLeaderboard();
   }, []);
 
-  // Fetch profile data when userId changes
+  // Fetch profile data and user votes when userId changes
   useEffect(() => {
     if (userId) {
       fetchProfileData();
+      fetchUserVotes();
     }
   }, [userId]);
+
+  // Refetch submissions when voted submission IDs change (to filter them out)
+  useEffect(() => {
+    if (challenge?.id && votedSubmissionIds.size > 0) {
+      console.log('[Frontend] Voted submissions updated, refetching to filter...');
+      fetchSubmissions(challenge.id);
+    }
+  }, [votedSubmissionIds]);
 
   // Show loading screen while checking user/onboarding
   if (user.isLoading || checkingOnboarding) {
@@ -553,25 +688,59 @@ export default function Home() {
 
   const handleVote = async (photoId: string, vote: 'up' | 'down') => {
     if (!userId) {
-      console.warn('No user ID available for voting');
+      console.warn('[Frontend] No user ID available for voting');
       return;
     }
 
-    // For now, we'll just log the vote
-    // In production, this would trigger a WLD payment transaction
-    console.log('Vote:', { photoId, vote, userId });
+    console.log('[Frontend] Vote action:', { photoId, vote, userId });
 
-    // TODO: Integrate with World ID Pay command for actual WLD transfer
-    // const wldAmount = 0.1 // Example amount
-    // await fetch('/api/votes', {
-    //   method: 'POST',
-    //   headers: { 'Content-Type': 'application/json' },
-    //   body: JSON.stringify({
-    //     submissionId: photoId,
-    //     voterId: userId,
-    //     wldAmount,
-    //   }),
-    // })
+    // Only create a vote for "up" (swipe right/yes)
+    // "down" (swipe left) is just a skip, no vote created
+    if (vote === 'up') {
+      try {
+        console.log('[Frontend] Creating vote with 1 WLD...');
+        const response = await fetch('/api/votes', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            submissionId: photoId,
+            voterId: userId,
+            wldAmount: 1 // Each yes vote adds 1 WLD
+          })
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+          if (response.status === 409) {
+            console.warn('[Frontend] Already voted on this submission');
+          } else {
+            console.error('[Frontend] Error creating vote:', data.error);
+          }
+          return;
+        }
+
+        console.log('[Frontend] Vote created successfully:', data.vote);
+
+        // Add voted submission to the set so it won't appear again
+        setVotedSubmissionIds((prev) => new Set([...prev, photoId]));
+
+        // Refresh leaderboard to show updated rankings
+        console.log('[Frontend] Refreshing leaderboard after vote...');
+        await fetchLeaderboard();
+
+        // Refresh submissions to show updated vote counts (and filter out voted submission)
+        if (challenge?.id) {
+          await fetchSubmissions(challenge.id);
+        }
+      } catch (error) {
+        console.error('[Frontend] Failed to create vote:', error);
+      }
+    } else {
+      console.log('[Frontend] Skipped (swiped left), no vote created');
+      // For skip, just add to voted set so it doesn't appear again
+      setVotedSubmissionIds((prev) => new Set([...prev, photoId]));
+    }
   };
 
   const handleCameraClick = () => {

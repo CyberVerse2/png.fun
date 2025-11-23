@@ -69,7 +69,7 @@ export function LeaderboardScreen({
             exit={{ opacity: 0, height: 0, marginBottom: 0 }}
             className="overflow-hidden"
           >
-            <NeoCard className="overflow-hidden p-0">
+            <NeoCard className="overflow-hidden p-0 mt-5">
               <div className="bg-primary py-3 px-4 border-b-2 border-black flex items-center justify-center gap-2">
                 <Trophy className="w-4 h-4 text-primary-foreground fill-current" />
                 <h2 className="text-primary-foreground font-black uppercase text-sm tracking-wider">
