@@ -321,6 +321,14 @@ This scratchpad tracks development tasks and progress for the PNG.FUN applicatio
 - ✅ Created .env.local with all required environment variables
 - ✅ Added TypeScript declarations for NextAuth session types
 - ✅ Integrated Supabase user creation/update in auth flow
+- ✅ **Fixed Edge Runtime compatibility** - Converted HMAC hashing from Node.js `crypto` to Web Crypto API (`crypto.subtle`) to work in Edge Runtime where middleware runs
+- ✅ **Updated onboarding flow**:
+  1. User clicks "Connect World ID" → Authenticates with World ID
+  2. Success screen shows → User clicks continue
+  3. Add MiniApp modal shows → User adds to home screen or skips
+  4. Notifications modal shows → User enables notifications or skips
+  5. Notification status saved to database
+- ✅ Created `add-miniapp-prompt.tsx` modeled after notification-prompt
 - ✅ No linter errors
 - ✅ UI/design/classes remain unchanged as requested
 
@@ -400,3 +408,4 @@ The human user should test:
 - Include info useful for debugging in the program output (already applied with console.logs)
 - Read the file before you try to edit it (followed)
 - Authentication flow should happen before checking onboarding status to avoid showing incorrect screens
+- **Edge Runtime Compatibility**: NextAuth middleware runs in Edge Runtime, which doesn't support Node.js modules like `crypto`. Use Web Crypto API (`crypto.subtle`) instead for HMAC operations that need to work in both Node.js and Edge environments.

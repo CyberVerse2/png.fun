@@ -21,7 +21,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           finalPayloadJson: string;
         };
 
-        const expectedSignedNonce = hashNonce({ nonce });
+        const expectedSignedNonce = await hashNonce({ nonce });
         if (signedNonce !== expectedSignedNonce) return null;
 
         const finalPayload: MiniAppWalletAuthSuccessPayload = JSON.parse(finalPayloadJson);
