@@ -1,0 +1,18 @@
+export const CONTRACTS = {
+  sepolia: {
+    mockWLD: '0x8FD73bCA4cA6EEE4A4a3797951F969a2088FD786', // Your deployed MockWLD
+    pngFunChallenge: '', // UPDATE THIS after deploying PngFunChallenge
+    chainId: 4801,
+    rpcUrl: 'https://worldchain-sepolia.g.alchemy.com/public',
+  },
+  mainnet: {
+    wld: '0x2cfc85d8e48f8eab294be644d9e25c3030863003',
+    pngFunChallenge: '', // Future mainnet deployment
+    chainId: 480,
+    rpcUrl: 'https://worldchain-mainnet.g.alchemy.com/public',
+  }
+};
+
+export const CURRENT_NETWORK = process.env.NEXT_PUBLIC_NETWORK === 'mainnet' 
+  ? CONTRACTS.mainnet 
+  : CONTRACTS.sepolia;
